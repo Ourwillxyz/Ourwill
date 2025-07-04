@@ -94,3 +94,4 @@ export default function PresidentialPoll() {
     </div>
   );
 }
+Added ward selection to presidential poll
