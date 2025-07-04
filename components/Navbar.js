@@ -15,8 +15,8 @@ export default function Navbar() {
         <Image
           src="/ourwill-logo.png"
           alt="OurWill Logo"
-          width={80}
-          height={80}
+          width={160}
+          height={160}
           style={{ borderRadius: '50%' }}
         />
       </Link>
