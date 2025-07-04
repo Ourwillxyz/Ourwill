@@ -5,3 +5,4 @@ export const wards = [
   { name: "Nyalenda A", subcounty: "Kisumu Central", county: "Kisumu" },
   { name: "Milimani Ward", subcounty: "Nakuru Town East", county: "Nakuru" }
 ];
+Update WardSelector.js with valid ward list
