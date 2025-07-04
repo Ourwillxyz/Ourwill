@@ -1,6 +1,22 @@
 import { useState } from 'react';
+import { wards } from '../components/WardSelector';
+
+import { useState } from 'react';
 
 const candidates = [
+<select
+  value={selectedWard}
+  onChange={(e) => setSelectedWard(e.target.value)}
+  style={{ padding: '0.5rem', marginBottom: '1rem', fontSize: '1rem' }}
+>
+  <option value="">Select your ward</option>
+  {wards.map((ward) => (
+    <option key={ward.name} value={ward.name}>
+      {ward.name} — {ward.subcounty}, {ward.county}
+    </option>
+  ))}
+</select>
+
   "David Maraga",
   "Fred Matiang’i",
   "Jim Wanjigi",
