@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { wards } from '../../components/wardselector';
+import { wards } from '../../components/WardSelector';
 
 const candidates = [
   { name: 'Hon. Alice Karimi', color: '#0074D9' },
@@ -33,6 +33,7 @@ export default function MPPoll() {
   return (
     <div>
       <h2>🇰🇪 Kenya - MP Voting</h2>
+
       <select onChange={e => setSelectedWard(e.target.value)} value={selectedWard}>
         <option value="">Select Ward</option>
         {wards.map((w, idx) => (
