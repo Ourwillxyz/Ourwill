@@ -2,20 +2,21 @@ import { useState } from 'react';
 import { wards } from '../../components/WardSelector';
 
 const candidates = [
-  { name: 'Hon. Amina Yusuf', color: '#FF851B' },
-  { name: 'Hon. John Otieno', color: '#0074D9' },
-  { name: 'Hon. Mwikali Nduku', color: '#2ECC40' },
+  { name: 'Hon. Alice Otieno', color: '#FF851B', party: 'ODM', symbol: '🟠' },
+  { name: 'Hon. Daniel Mutiso', color: '#2ECC40', party: 'UDA', symbol: '🟡' },
+  { name: 'Hon. Esther Mwikali', color: '#7FDBFF', party: 'Independent', symbol: '⚪' },
 ];
 
 export default function MCAPoll() {
   const [selectedWard, setSelectedWard] = useState('');
-  const [selectedCandidate, setSelectedCandidate] = useState('');
   const [votes, setVotes] = useState({});
+  const [votedCandidate, setVotedCandidate] = useState('');
 
-  const handleVote = () => {
-    if (!selectedWard || !selectedCandidate) return;
-    const key = `${selectedWard}-${selectedCandidate}`;
+  const handleVote = (candidateName) => {
+    if (!selectedWard) return alert('Please select a ward before voting.');
+    const key = `${selectedWard}-${candidateName}`;
     setVotes(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
+    setVotedCandidate(candidateName);
   };
 
   const getResultsByWard = () => {
@@ -41,14 +42,46 @@ export default function MCAPoll() {
         ))}
       </select>
 
-      <select onChange={e => setSelectedCandidate(e.target.value)} value={selectedCandidate}>
-        <option value="">Select Candidate</option>
-        {candidates.map((c, idx) => (
-          <option key={idx} value={c.name}>{c.name}</option>
+      <h4 style={{ marginTop: '20px' }}>Choose Your Candidate:</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', margin: '15px 0' }}>
+        {candidates.map((c) => (
+          <div
+            key={c.name}
+            style={{
+              backgroundColor: '#f4f4f4',
+              border: `2px solid ${c.color}`,
+              borderRadius: '8px',
+              padding: '12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
+          >
+            <div>
+              <strong style={{ fontSize: '16px' }}>{c.name}</strong><br />
+              <span style={{ fontSize: '14px', color: '#666' }}>{c.party}</span>
+            </div>
+            <div style={{ fontSize: '24px' }}>{c.symbol}</div>
+            <button
+              onClick={() => handleVote(c.name)}
+              style={{
+                backgroundColor: c.color,
+                color: '#fff',
+                border: 'none',
+                borderRadius: '5px',
+                padding: '6px 12px',
+                cursor: 'pointer'
+              }}
+            >
+              Vote
+            </button>
+          </div>
         ))}
-      </select>
+      </div>
 
-      <button onClick={handleVote}>Vote</button>
+      {votedCandidate && (
+        <p>✅ You voted for <strong>{votedCandidate}</strong> in {selectedWard}</p>
+      )}
 
       {Object.keys(results).length > 0 && (
         <div>
