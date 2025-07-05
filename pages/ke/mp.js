@@ -9,13 +9,14 @@ const candidates = [
 
 export default function MPPoll() {
   const [selectedWard, setSelectedWard] = useState('');
-  const [selectedCandidate, setSelectedCandidate] = useState('');
   const [votes, setVotes] = useState({});
+  const [votedCandidate, setVotedCandidate] = useState('');
 
-  const handleVote = () => {
-    if (!selectedWard || !selectedCandidate) return;
-    const key = `${selectedWard}-${selectedCandidate}`;
+  const handleVote = (candidateName) => {
+    if (!selectedWard) return alert('Please select a ward before voting.');
+    const key = `${selectedWard}-${candidateName}`;
     setVotes(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
+    setVotedCandidate(candidateName);
   };
 
   const getResultsByWard = () => {
@@ -41,14 +42,30 @@ export default function MPPoll() {
         ))}
       </select>
 
-      <select onChange={e => setSelectedCandidate(e.target.value)} value={selectedCandidate}>
-        <option value="">Select Candidate</option>
-        {candidates.map((c, idx) => (
-          <option key={idx} value={c.name}>{c.name}</option>
+      <h4>Select Your Candidate:</h4>
+      <div style={{ display: 'flex', gap: '10px', margin: '10px 0' }}>
+        {candidates.map((c) => (
+          <button
+            key={c.name}
+            onClick={() => handleVote(c.name)}
+            style={{
+              backgroundColor: c.color,
+              color: '#fff',
+              border: 'none',
+              padding: '10px',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              flex: 1
+            }}
+          >
+            {c.name}
+          </button>
         ))}
-      </select>
+      </div>
 
-      <button onClick={handleVote}>Vote</button>
+      {votedCandidate && (
+        <p>✅ You voted for <strong>{votedCandidate}</strong> in {selectedWard}</p>
+      )}
 
       {Object.keys(results).length > 0 && (
         <div>
