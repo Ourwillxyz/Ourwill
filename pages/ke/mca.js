@@ -1,38 +1,68 @@
 import { useState } from 'react';
-import { wards } from '../../components/wardselector';
+import { wards } from '../../components/WardSelector';
 
 const candidates = [
-  { name: 'Amina Mwangi', ward: 'Likoni Ward' },
-  { name: 'John Otieno', ward: 'Timbwani Ward' },
-  { name: 'Grace Wanjiru', ward: 'Langata Ward' },
+  { name: 'Hon. Amina Yusuf', color: '#FF851B' },
+  { name: 'Hon. John Otieno', color: '#0074D9' },
+  { name: 'Hon. Mwikali Nduku', color: '#2ECC40' },
 ];
 
 export default function MCAPoll() {
   const [selectedWard, setSelectedWard] = useState('');
-  const [voted, setVoted] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState('');
+  const [votes, setVotes] = useState({});
 
-  const filtered = candidates.filter(c => c.ward === selectedWard);
+  const handleVote = () => {
+    if (!selectedWard || !selectedCandidate) return;
+    const key = `${selectedWard}-${selectedCandidate}`;
+    setVotes(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
+  };
+
+  const getResultsByWard = () => {
+    const results = {};
+    Object.entries(votes).forEach(([key, count]) => {
+      const [ward, candidate] = key.split('-');
+      if (!results[ward]) results[ward] = {};
+      results[ward][candidate] = count;
+    });
+    return results;
+  };
+
+  const results = getResultsByWard();
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div>
       <h2>🇰🇪 Kenya - MCA Voting</h2>
-      <label>Select your Ward:</label><br />
-      <select onChange={(e) => setSelectedWard(e.target.value)} value={selectedWard}>
-        <option value="">-- Choose a Ward --</option>
-        {wards.map((ward, i) => (
-          <option key={i} value={ward.name}>{ward.name}</option>
+
+      <select onChange={e => setSelectedWard(e.target.value)} value={selectedWard}>
+        <option value="">Select Ward</option>
+        {wards.map((w, idx) => (
+          <option key={idx} value={w.name}>{w.name}</option>
         ))}
       </select>
 
-      {selectedWard && (
-        <div style={{ marginTop: '20px' }}>
-          <h3>Candidates in {selectedWard}</h3>
-          {filtered.map((candidate, i) => (
-            <div key={i}>
-              <p>{candidate.name}</p>
-              <button onClick={() => setVoted(true)} disabled={voted}>
-                {voted ? 'Voted' : 'Vote'}
-              </button>
+      <select onChange={e => setSelectedCandidate(e.target.value)} value={selectedCandidate}>
+        <option value="">Select Candidate</option>
+        {candidates.map((c, idx) => (
+          <option key={idx} value={c.name}>{c.name}</option>
+        ))}
+      </select>
+
+      <button onClick={handleVote}>Vote</button>
+
+      {Object.keys(results).length > 0 && (
+        <div>
+          <h3>Results by Ward</h3>
+          {Object.entries(results).map(([ward, wardVotes]) => (
+            <div key={ward}>
+              <strong>{ward}</strong>
+              <ul>
+                {Object.entries(wardVotes).map(([candidate, count]) => (
+                  <li key={candidate}>
+                    {candidate}: {count} votes
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
