@@ -20,7 +20,7 @@ export default function OTP() {
 
   return (
     <div style={{ padding: '20px' }}>
-      <h2NG Nigeria - Phone Verification</h2>
+      <h2>🇳🇬 Nigeria - Phone Verification</h2>
       {!isVerified ? (
         <form onSubmit={handleSubmit}>
           <input
