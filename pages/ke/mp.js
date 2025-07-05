@@ -42,8 +42,8 @@ export default function MPPoll() {
         ))}
       </select>
 
-      <h4>Select Your Candidate:</h4>
-      <div style={{ display: 'flex', gap: '10px', margin: '10px 0' }}>
+      <h4 style={{ marginTop: '20px' }}>Select Your Candidate:</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '10px 0' }}>
         {candidates.map((c) => (
           <button
             key={c.name}
@@ -55,10 +55,11 @@ export default function MPPoll() {
               padding: '10px',
               borderRadius: '5px',
               cursor: 'pointer',
-              flex: 1
+              textAlign: 'left'
             }}
           >
-            {c.name}
+            {/* Placeholder for future logo or symbol */}
+            <strong>{c.name}</strong>
           </button>
         ))}
       </div>
