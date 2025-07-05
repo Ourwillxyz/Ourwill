@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import CountrySelector from '../components/CountrySelector';
 
 export default function Home() {
   return (
@@ -9,11 +10,8 @@ export default function Home() {
         helping reduce election disputes and enhance public trust.
       </p>
 
-      <h2>🗳️ Start Polling</h2>
-      <p>To vote, please verify your phone number first.</p>
-      <Link href="/otp">
-        <button style={{ padding: '10px', fontWeight: 'bold' }}>Verify & Vote</button>
-      </Link>
+      <h2>🌍 Select Your Country</h2>
+      <CountrySelector />
 
       <br /><br />
       <p style={{ fontSize: '12px', fontStyle: 'italic' }}>
