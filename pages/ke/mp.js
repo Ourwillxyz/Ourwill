@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { wards } from '../../components/WardSelector';
 
 const candidates = [
-  { name: 'Hon. Alice Karimi', color: '#0074D9' },
-  { name: 'Hon. David Mwangi', color: '#FF4136' },
-  { name: 'Hon. Wanjiku Njeri', color: '#2ECC40' },
+  { name: 'Hon. Peter Kiptoo', color: '#FF4136' },
+  { name: 'Hon. Wanjiru Mwangi', color: '#B10DC9' },
+  { name: 'Hon. Yusuf Abdi', color: '#01FF70' },
 ];
 
 export default function MPPoll() {
