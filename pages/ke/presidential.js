@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { wards } from '../../components/wardselector';
+import { wards } from '../../components/WardSelector';
 
 export default function PresidentialPoll() {
   const [selectedWard, setSelectedWard] = useState('');
