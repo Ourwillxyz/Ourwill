@@ -3,95 +3,61 @@ import { wards } from '../../components/WardSelector';
 
 export default function PresidentialPoll() {
   const [selectedWard, setSelectedWard] = useState('');
-  const [votes, setVotes] = useState({});
   const [voted, setVoted] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
 
   const candidates = [
-    { name: "David Maraga", color: "#f4a261", party: "Independent" },
-    { name: "Fred Matiang'i", color: "#2a9d8f", party: "Ubuntu Party" },
-    { name: "Jim Wanjigi", color: "#8d99ae", party: "Safina" },
-    { name: "Kalonzo Musyoka", color: "#264653", party: "Wiper" },
-    { name: "Okiya Omtata", color: "#e76f51", party: "Reform Bloc" },
-    { name: "Raila Odinga", color: "#003f5c", party: "ODM" },
-    { name: "William Ruto", color: "#fcbf49", party: "UDA" },
-    { name: "Undecided", color: "#cccccc", party: "N/A" },
+    { name: "David Maraga", party: "Independent" },
+    { name: "Fred Matiang'i", party: "Independent" },
+    { name: "Jim Wanjigi", party: "Safina" },
+    { name: "Kalonzo Musyoka", party: "Wiper" },
+    { name: "Okiya Omtata", party: "Independent" },
+    { name: "Raila Odinga", party: "ODM" },
+    { name: "William Ruto", party: "UDA" },
+    { name: "Undecided", party: "None" },
   ];
 
-  const handleVote = (candidateName) => {
-    if (!selectedWard) return alert("Please select your ward before voting.");
-    if (voted) return alert("You have already voted.");
-
-    setVotes((prevVotes) => ({
-      ...prevVotes,
-      [candidateName]: (prevVotes[candidateName] || 0) + 1,
-    }));
+  const handleVote = (candidate) => {
+    setSelectedCandidate(candidate);
     setVoted(true);
   };
 
   return (
     <div style={{ padding: '20px' }}>
-      <h2>🇰🇪 Kenya - Presidential Voting</h2>
-      <p><strong>Select your ward:</strong></p>
-      <select
-        value={selectedWard}
-        onChange={(e) => setSelectedWard(e.target.value)}
-      >
-        <option value="">-- Select Ward --</option>
-        {wards.map((ward, idx) => (
-          <option key={idx} value={ward.name}>
+      <h2>🇰🇪 Kenya - Presidential Poll</h2>
+
+      <label>Select Your Ward:</label>
+      <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)}>
+        <option value="">-- Choose Ward --</option>
+        {wards.map((ward, index) => (
+          <option key={index} value={ward.name}>
             {ward.name} - {ward.subcounty}, {ward.county}
           </option>
         ))}
       </select>
 
-      <div style={{ marginTop: '20px' }}>
-        <h3>Candidates</h3>
-        {candidates.map((candidate, idx) => (
-          <div
-            key={idx}
-            style={{
-              backgroundColor: candidate.color,
-              padding: '10px',
-              marginBottom: '10px',
-              borderRadius: '8px',
-              color: 'white',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <div>
-              <strong>{candidate.name}</strong> <br />
-              <small>Party: {candidate.party}</small>
-            </div>
-            <button
-              onClick={() => handleVote(candidate.name)}
-              disabled={voted}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: '#fff',
-                color: candidate.color,
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              Vote
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {Object.keys(votes).length > 0 && (
+      {selectedWard && !voted && (
         <div style={{ marginTop: '20px' }}>
-          <h3>Live Poll Results</h3>
-          <ul>
-            {Object.entries(votes).map(([name, count]) => (
-              <li key={name}>
-                {name}: {count} vote(s)
-              </li>
-            ))}
-          </ul>
+          <h3>Candidates:</h3>
+          {candidates.map((candidate, index) => (
+            <div key={index} style={{
+              border: '1px solid #ccc',
+              padding: '12px',
+              marginBottom: '12px',
+              borderRadius: '8px'
+            }}>
+              <h4>{candidate.name}</h4>
+              <p>Party: {candidate.party}</p>
+              <p><em>[Party Symbol Placeholder]</em></p>
+              <button onClick={() => handleVote(candidate.name)}>Vote</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {voted && (
+        <div style={{ marginTop: '20px', color: 'green' }}>
+          <h3>✅ You voted for: {selectedCandidate}</h3>
         </div>
       )}
     </div>
