@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { wards } from '../../components/WardSelector';
 
 const candidates = [
-  { name: 'Hon. Peter Kiptoo', color: '#FF4136' },
-  { name: 'Hon. Wanjiru Mwangi', color: '#B10DC9' },
-  { name: 'Hon. Yusuf Abdi', color: '#01FF70' },
+  { name: 'Hon. Peter Kiptoo', color: '#FF4136', party: 'UDA', symbol: '🟡' },
+  { name: 'Hon. Wanjiru Mwangi', color: '#B10DC9', party: 'ODM', symbol: '🟠' },
+  { name: 'Hon. Yusuf Abdi', color: '#01FF70', party: 'Independent', symbol: '⚪' },
 ];
 
 export default function MPPoll() {
@@ -42,25 +42,40 @@ export default function MPPoll() {
         ))}
       </select>
 
-      <h4 style={{ marginTop: '20px' }}>Select Your Candidate:</h4>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '10px 0' }}>
+      <h4 style={{ marginTop: '20px' }}>Choose Your Candidate:</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', margin: '15px 0' }}>
         {candidates.map((c) => (
-          <button
+          <div
             key={c.name}
-            onClick={() => handleVote(c.name)}
             style={{
-              backgroundColor: c.color,
-              color: '#fff',
-              border: 'none',
-              padding: '10px',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              textAlign: 'left'
+              backgroundColor: '#f4f4f4',
+              border: `2px solid ${c.color}`,
+              borderRadius: '8px',
+              padding: '12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}
           >
-            {/* Placeholder for future logo or symbol */}
-            <strong>{c.name}</strong>
-          </button>
+            <div>
+              <strong style={{ fontSize: '16px' }}>{c.name}</strong><br />
+              <span style={{ fontSize: '14px', color: '#666' }}>{c.party}</span>
+            </div>
+            <div style={{ fontSize: '24px' }}>{c.symbol}</div>
+            <button
+              onClick={() => handleVote(c.name)}
+              style={{
+                backgroundColor: c.color,
+                color: '#fff',
+                border: 'none',
+                borderRadius: '5px',
+                padding: '6px 12px',
+                cursor: 'pointer'
+              }}
+            >
+              Vote
+            </button>
+          </div>
         ))}
       </div>
 
