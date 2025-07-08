@@ -1,52 +1,76 @@
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
-import LocationSelector from './LocationSelector';
-import './FormVertical.css'; // Import the CSS file
 
-const RegisterUser = () => {
-  const [phone, setPhone] = useState('');
-  const [pollingCentre, setPollingCentre] = useState('');
+const RegisterForm = () => {
+  const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    if (!pollingCentre) {
-      alert('Please select your polling centre');
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    // Sign up with Supabase Auth
+    const { user, session, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
+      setLoading(false);
       return;
     }
-    const { error } = await supabase.from('users').insert([
+
+    // Insert into users table (replace 'users' with your actual table name if different)
+    const { error: insertError } = await supabase.from('users').insert([
       {
-        phone,
-        polling_centre_code: pollingCentre,
-      }
+        name,
+        mobile, // <-- using mobile here
+        email,
+        auth_id: user?.id || null,
+      },
     ]);
-    if (error) {
-      alert(error.message);
+    if (insertError) {
+      setError(insertError.message);
     } else {
-      alert('Registration successful!');
-      setPhone('');
-      setPollingCentre('');
+      setSuccess('Registration successful!');
+      setName('');
+      setMobile('');
+      setEmail('');
+      setPassword('');
     }
+    setLoading(false);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="vertical-form">
-      <div className="form-group">
-        <label>Phone Number</label>
-        <input
-          type="text"
-          value={phone}
-          onChange={e => setPhone(e.target.value)}
-          placeholder="Phone number"
-          required
-        />
+    <form onSubmit={handleRegister}>
+      <div>
+        <label>Name:</label>
+        <input value={name} onChange={e => setName(e.target.value)} required />
       </div>
-      <LocationSelector
-        pollingCentre={pollingCentre}
-        setPollingCentre={setPollingCentre}
-      />
-      <button type="submit">Register</button>
+      <div>
+        <label>Mobile:</label>
+        <input value={mobile} onChange={e => setMobile(e.target.value)} required />
+      </div>
+      <div>
+        <label>Email:</label>
+        <input value={email} onChange={e => setEmail(e.target.value)} required type="email" />
+      </div>
+      <div>
+        <label>Password:</label>
+        <input value={password} onChange={e => setPassword(e.target.value)} required type="password" />
+      </div>
+      <button type="submit" disabled={loading}>{loading ? 'Registering...' : 'Register'}</button>
+      {error && <div style={{color: 'red'}}>{error}</div>}
+      {success && <div style={{color: 'green'}}>{success}</div>}
     </form>
   );
 };
 
-export default RegisterUser;
+export default RegisterForm;
