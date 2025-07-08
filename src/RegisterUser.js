@@ -1,30 +1,22 @@
 import React, { useState } from 'react';
-import { supabase } from './supabaseClient';
 import LocationSelector from './LocationSelector';
 
 const RegisterUser = () => {
-  const [mobile, setMobile] = useState(''); // Changed from phone to mobile
+  const [mobile, setMobile] = useState('');
   const [pollingCentre, setPollingCentre] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Show a user-friendly message instead of attempting to insert
+    setError('');
+    setSuccess('');
     if (!pollingCentre) {
-      alert('Please select your polling centre');
+      setError('Please select your polling centre');
       return;
     }
-    // Save to users table in Supabase
-    const { error } = await supabase.from('users').insert([
-      {
-        mobile, // Use mobile here
-        polling_centre_code: pollingCentre,
-      }
-    ]);
-    if (error) {
-      alert(error.message);
-    } else {
-      alert('Registration successful!');
-      // Optional: Clear form or redirect user
-    }
+    setSuccess('Registration is currently unavailable. Please contact the administrator.');
   };
 
   return (
@@ -72,6 +64,8 @@ const RegisterUser = () => {
         >
           Register
         </button>
+        {error && <div style={{ color: 'red', fontSize: '1rem' }}>{error}</div>}
+        {success && <div style={{ color: 'green', fontSize: '1rem' }}>{success}</div>}
       </form>
     </div>
   );
