@@ -1,76 +1,50 @@
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
+import LocationSelector from './LocationSelector';
 
-const RegisterForm = () => {
-  const [name, setName] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+const RegisterUser = () => {
+  const [phone, setPhone] = useState('');
+  const [pollingCentre, setPollingCentre] = useState('');
+  // Add other fields as needed, e.g. name, email
 
-  const handleRegister = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    // Sign up with Supabase Auth
-    const { user, session, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (signUpError) {
-      setError(signUpError.message);
-      setLoading(false);
+    if (!pollingCentre) {
+      alert('Please select your polling centre');
       return;
     }
-
-    // Insert into users table (replace 'users' with your actual table name if different)
-    const { error: insertError } = await supabase.from('users').insert([
+    // Save to users table in Supabase
+    const { error } = await supabase.from('users').insert([
       {
-        name,
-        mobile, // <-- using mobile here
-        email,
-        auth_id: user?.id || null,
-      },
+        phone,
+        polling_centre_code: pollingCentre,
+        // Add other fields here if needed
+      }
     ]);
-    if (insertError) {
-      setError(insertError.message);
+    if (error) {
+      alert(error.message);
     } else {
-      setSuccess('Registration successful!');
-      setName('');
-      setMobile('');
-      setEmail('');
-      setPassword('');
+      alert('Registration successful!');
+      // Optional: Clear form or redirect user
     }
-    setLoading(false);
   };
 
   return (
-    <form onSubmit={handleRegister}>
-      <div>
-        <label>Name:</label>
-        <input value={name} onChange={e => setName(e.target.value)} required />
-      </div>
-      <div>
-        <label>Mobile:</label>
-        <input value={mobile} onChange={e => setMobile(e.target.value)} required />
-      </div>
-      <div>
-        <label>Email:</label>
-        <input value={email} onChange={e => setEmail(e.target.value)} required type="email" />
-      </div>
-      <div>
-        <label>Password:</label>
-        <input value={password} onChange={e => setPassword(e.target.value)} required type="password" />
-      </div>
-      <button type="submit" disabled={loading}>{loading ? 'Registering...' : 'Register'}</button>
-      {error && <div style={{color: 'red'}}>{error}</div>}
-      {success && <div style={{color: 'green'}}>{success}</div>}
+    <form onSubmit={handleSubmit}>
+      <label>Phone Number</label>
+      <input
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
+        placeholder="Phone number"
+        required
+      />
+      <LocationSelector
+        pollingCentre={pollingCentre}
+        setPollingCentre={setPollingCentre}
+      />
+      <button type="submit">Register</button>
     </form>
   );
 };
 
-export default RegisterForm;
+export default RegisterUser;
