@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 
+const backendBase = "https://ourwill-admin.vercel.app";
+
 export default function App() {
   const [step, setStep] = useState(1);
   const [mobile, setMobile] = useState("");
@@ -12,13 +14,14 @@ export default function App() {
     setMessage("");
     setLoading(true);
     try {
-      const response = await fetch("https://your-backend.com/api/send-otp", {
+      const response = await fetch(`${backendBase}/api/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mobile })
       });
-      if (!response.ok) throw new Error("Failed to send OTP");
-      setMessage("OTP sent! Please check your phone.");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to send OTP");
+      setMessage("OTP sent! (Check backend logs for mock SMS)");
       setStep(2);
     } catch (err) {
       setMessage(err.message);
@@ -31,12 +34,13 @@ export default function App() {
     setMessage("");
     setLoading(true);
     try {
-      const response = await fetch("https://your-backend.com/api/verify-otp", {
+      const response = await fetch(`${backendBase}/api/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mobile, otp })
       });
-      if (!response.ok) throw new Error("OTP verification failed");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "OTP verification failed");
       setMessage("Registration successful!");
       setStep(1);
       setMobile("");
