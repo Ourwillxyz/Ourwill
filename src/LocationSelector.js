@@ -11,15 +11,15 @@ const LocationSelector = ({ pollingCentre, setPollingCentre }) => {
   const [subcounty, setSubcounty] = useState('');
   const [ward, setWard] = useState('');
 
-  // Fetch counties on mount
+  // Fetch counties on first load
   useEffect(() => {
-    supabase.from('counties').select('id, name').then(({ data }) => setCounties(data));
+    supabase.from('counties').select('id, name').then(({ data }) => setCounties(data || []));
   }, []);
 
   // Fetch subcounties when county changes
   useEffect(() => {
     if (county) {
-      supabase.from('subcounties').select('id, name').eq('county_id', county).then(({ data }) => setSubcounties(data));
+      supabase.from('subcounties').select('id, name').eq('county_id', county).then(({ data }) => setSubcounties(data || []));
       setSubcounty('');
       setWard('');
       setCentres([]);
@@ -30,7 +30,7 @@ const LocationSelector = ({ pollingCentre, setPollingCentre }) => {
   // Fetch wards when subcounty changes
   useEffect(() => {
     if (subcounty) {
-      supabase.from('wards').select('id, name').eq('subcounty_id', subcounty).then(({ data }) => setWards(data));
+      supabase.from('wards').select('id, name').eq('subcounty_id', subcounty).then(({ data }) => setWards(data || []));
       setWard('');
       setCentres([]);
     }
@@ -39,7 +39,7 @@ const LocationSelector = ({ pollingCentre, setPollingCentre }) => {
   // Fetch polling centres when ward changes
   useEffect(() => {
     if (ward) {
-      supabase.from('polling_centres').select('code, name').eq('ward_id', ward).then(({ data }) => setCentres(data));
+      supabase.from('polling_centres').select('code, name').eq('ward_id', ward).then(({ data }) => setCentres(data || []));
       setPollingCentre('');
     }
   }, [ward, setPollingCentre]);
