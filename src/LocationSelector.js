@@ -54,7 +54,7 @@ const LocationSelector = ({ pollingCentre, setPollingCentre }) => {
       const { data, error } = await supabase
         .from('wards')
         .select('*')
-        .eq('subcounty_id', subcounty)
+        .eq('subcounty_code', subcounty)
         .order('name');
       if (!error) setWards(data);
     }
@@ -106,7 +106,7 @@ const LocationSelector = ({ pollingCentre, setPollingCentre }) => {
         >
           <option value="">--Select Subcounty--</option>
           {subcounties.map(sc => (
-            <option key={sc.id} value={sc.id}>
+            <option key={sc.id} value={sc.code || sc.id}>
               {sc.name}
             </option>
           ))}
