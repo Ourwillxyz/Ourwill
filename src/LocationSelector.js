@@ -72,7 +72,7 @@ const LocationSelector = ({ pollingCentre, setPollingCentre }) => {
       const { data, error } = await supabase
         .from('polling_centres')
         .select('*')
-        .eq('ward_id', ward)
+        .eq('ward_code', ward)
         .order('name');
       if (!error) setCentres(data);
     }
@@ -122,7 +122,7 @@ const LocationSelector = ({ pollingCentre, setPollingCentre }) => {
         >
           <option value="">--Select Ward--</option>
           {wards.map(w => (
-            <option key={w.id} value={w.id}>
+            <option key={w.id} value={w.code || w.id}>
               {w.name}
             </option>
           ))}
