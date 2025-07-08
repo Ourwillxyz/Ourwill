@@ -1,20 +1,47 @@
 import React, { useState } from 'react';
+import { supabase } from './supabaseClient';
 import LocationSelector from './LocationSelector';
 
 const RegisterUser = () => {
+  const [phone, setPhone] = useState('');
   const [pollingCentre, setPollingCentre] = useState('');
-  // ... other registration state fields
+  // Add other fields as needed, e.g. name, email
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Save pollingCentre in users table along with other registration data
-    // Example: { ...otherFields, polling_centre_code: pollingCentre }
+    if (!pollingCentre) {
+      alert('Please select your polling centre');
+      return;
+    }
+    // Save to users table in Supabase
+    const { error } = await supabase.from('users').insert([
+      {
+        phone,
+        polling_centre_code: pollingCentre,
+        // Add other fields here if needed
+      }
+    ]);
+    if (error) {
+      alert(error.message);
+    } else {
+      alert('Registration successful!');
+      // Optional: Clear form or redirect user
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* ... other registration fields ... */}
-      <LocationSelector pollingCentre={pollingCentre} setPollingCentre={setPollingCentre} />
+      <label>Phone Number</label>
+      <input
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
+        placeholder="Phone number"
+        required
+      />
+      <LocationSelector
+        pollingCentre={pollingCentre}
+        setPollingCentre={setPollingCentre}
+      />
       <button type="submit">Register</button>
     </form>
   );
