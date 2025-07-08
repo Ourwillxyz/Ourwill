@@ -1,58 +1,91 @@
 import React, { useState } from "react";
 
 export default function App() {
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
+  const [step, setStep] = useState(1);
+  const [mobile, setMobile] = useState("");
+  const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-
-  async function handleSubmit(e) {
+  async function sendOtp(e) {
     e.preventDefault();
     setMessage("");
-    if (form.password !== form.confirmPassword) {
-      setMessage("Passwords do not match");
-      return;
-    }
+    setLoading(true);
     try {
-      // CHANGE THIS URL to your real backend registration endpoint!
-      const response = await fetch("https://your-backend.com/api/register", {
+      const response = await fetch("https://your-backend.com/api/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          password: form.password
-        })
+        body: JSON.stringify({ mobile })
       });
-      if (!response.ok) throw new Error("Registration failed");
-      setMessage("Registration successful! You can now log in.");
-      setForm({ name: "", email: "", password: "", confirmPassword: "" });
+      if (!response.ok) throw new Error("Failed to send OTP");
+      setMessage("OTP sent! Please check your phone.");
+      setStep(2);
     } catch (err) {
       setMessage(err.message);
     }
+    setLoading(false);
+  }
+
+  async function verifyOtp(e) {
+    e.preventDefault();
+    setMessage("");
+    setLoading(true);
+    try {
+      const response = await fetch("https://your-backend.com/api/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile, otp })
+      });
+      if (!response.ok) throw new Error("OTP verification failed");
+      setMessage("Registration successful!");
+      setStep(1);
+      setMobile("");
+      setOtp("");
+    } catch (err) {
+      setMessage(err.message);
+    }
+    setLoading(false);
   }
 
   return (
     <main style={{ maxWidth: 400, margin: "2em auto", padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
-      <h2>Register</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} required style={{ width: "100%", marginBottom: 10, padding: 8 }} />
-        </div>
-        <div>
-          <input name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} required style={{ width: "100%", marginBottom: 10, padding: 8 }} />
-        </div>
-        <div>
-          <input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required style={{ width: "100%", marginBottom: 10, padding: 8 }} />
-        </div>
-        <div>
-          <input name="confirmPassword" type="password" placeholder="Confirm Password" value={form.confirmPassword} onChange={handleChange} required style={{ width: "100%", marginBottom: 10, padding: 8 }} />
-        </div>
-        <button type="submit" style={{ width: "100%", padding: 10, background: "#0070f3", color: "white", border: "none", borderRadius: 4 }}>Register</button>
-      </form>
-      {message && <div style={{ marginTop: 10, color: message.includes("successful") ? "green" : "red" }}>{message}</div>}
+      <h2>User Registration (with OTP)</h2>
+      {step === 1 && (
+        <form onSubmit={sendOtp}>
+          <div>
+            <input
+              type="tel"
+              placeholder="Enter mobile number"
+              value={mobile}
+              onChange={e => setMobile(e.target.value)}
+              pattern="^\+?\d{10,15}$"
+              required
+              style={{ width: "100%", marginBottom: 10, padding: 8 }}
+            />
+          </div>
+          <button type="submit" disabled={loading} style={{ width: "100%", padding: 10 }}>
+            {loading ? "Sending..." : "Send OTP"}
+          </button>
+        </form>
+      )}
+      {step === 2 && (
+        <form onSubmit={verifyOtp}>
+          <div>
+            <input
+              type="text"
+              placeholder="Enter OTP"
+              value={otp}
+              onChange={e => setOtp(e.target.value)}
+              required
+              style={{ width: "100%", marginBottom: 10, padding: 8 }}
+            />
+          </div>
+          <button type="submit" disabled={loading} style={{ width: "100%", padding: 10 }}>
+            {loading ? "Verifying..." : "Verify OTP"}
+          </button>
+        </form>
+      )}
+      {message && <div style={{ marginTop: 10, color: message.includes("successful") ? "green" : "blue" }}>{message}</div>}
     </main>
   );
 }
