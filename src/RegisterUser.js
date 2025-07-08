@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
 import LocationSelector from './LocationSelector';
+import './FormVertical.css'; // Import the CSS file
 
 const RegisterUser = () => {
   const [phone, setPhone] = useState('');
   const [pollingCentre, setPollingCentre] = useState('');
-  // Add other fields as needed, e.g. name, email
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -13,31 +13,33 @@ const RegisterUser = () => {
       alert('Please select your polling centre');
       return;
     }
-    // Save to users table in Supabase
     const { error } = await supabase.from('users').insert([
       {
         phone,
         polling_centre_code: pollingCentre,
-        // Add other fields here if needed
       }
     ]);
     if (error) {
       alert(error.message);
     } else {
       alert('Registration successful!');
-      // Optional: Clear form or redirect user
+      setPhone('');
+      setPollingCentre('');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label>Phone Number</label>
-      <input
-        value={phone}
-        onChange={e => setPhone(e.target.value)}
-        placeholder="Phone number"
-        required
-      />
+    <form onSubmit={handleSubmit} className="vertical-form">
+      <div className="form-group">
+        <label>Phone Number</label>
+        <input
+          type="text"
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          placeholder="Phone number"
+          required
+        />
+      </div>
       <LocationSelector
         pollingCentre={pollingCentre}
         setPollingCentre={setPollingCentre}
