@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { sendSms } from './helpers/sendSms'; // Adjust the path if needed
+import { sendEmailOtp } from './helpers/sendEmailOtp'; // New helper for email OTP
 
 function generateOtp() {
   return Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
@@ -7,6 +7,7 @@ function generateOtp() {
 
 const RegisterUser = () => {
   const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [inputOtp, setInputOtp] = useState('');
   const [step, setStep] = useState(1);
@@ -21,16 +22,22 @@ const RegisterUser = () => {
       return;
     }
 
+    // Simple email validation
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setInfo('Please enter a valid email address.');
+      return;
+    }
+
     const otp = generateOtp();
     setGeneratedOtp(otp);
-    setInfo('Sending OTP...');
+    setInfo('Sending OTP to your email...');
 
-    const result = await sendSms(mobile, `Your OTP is: ${otp}`);
+    const result = await sendEmailOtp(email, otp);
     if (result.success) {
       setStep(2);
-      setInfo('OTP sent! Please check your SMS (or sandbox simulator if testing).');
+      setInfo('OTP sent! Please check your email.');
     } else {
-      setInfo('Failed to send OTP. Please try again later.');
+      setInfo('Failed to send OTP email. Please try again later.');
     }
   };
 
@@ -38,7 +45,7 @@ const RegisterUser = () => {
     e.preventDefault();
     if (inputOtp === generatedOtp) {
       setVerified(true);
-      setInfo('✅ Registration successful! Your number has been verified.');
+      setInfo('✅ Registration successful! Your email has been verified.');
     } else {
       setInfo('❌ Incorrect OTP. Please try again.');
     }
@@ -63,6 +70,19 @@ const RegisterUser = () => {
             />
           </label>
           <br />
+          <label>
+            Email Address:<br />
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="e.g. user@example.com"
+              required
+              style={{ padding: 8, width: '90%', margin: '1rem 0' }}
+              disabled={step !== 1}
+            />
+          </label>
+          <br />
           <button type="submit" disabled={step !== 1} style={{ padding: '8px 16px' }}>Register</button>
         </form>
       )}
@@ -70,7 +90,7 @@ const RegisterUser = () => {
       {step === 2 && !verified && (
         <form onSubmit={handleVerify}>
           <label>
-            Enter OTP sent to your phone:<br />
+            Enter OTP sent to your email:<br />
             <input
               type="text"
               value={inputOtp}
