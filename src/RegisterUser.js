@@ -1,11 +1,24 @@
-import React, { useState } from 'react';
-import { sendEmailOtp } from './helpers/sendEmailOtp'; // New helper for email OTP
+import React, { useState, useEffect } from 'react';
+import { sendEmailOtp } from './helpers/sendEmailOtp';
+import { supabase } from './supabaseClient'; // Adjust import if needed
 
 function generateOtp() {
-  return Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
 const RegisterUser = () => {
+  // Location states
+  const [counties, setCounties] = useState([]);
+  const [subcounties, setSubcounties] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [pollingCentres, setPollingCentres] = useState([]);
+
+  const [selectedCounty, setSelectedCounty] = useState('');
+  const [selectedSubcounty, setSelectedSubcounty] = useState('');
+  const [selectedWard, setSelectedWard] = useState('');
+  const [selectedPollingCentre, setSelectedPollingCentre] = useState('');
+
+  // Registration states
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [generatedOtp, setGeneratedOtp] = useState('');
@@ -14,24 +27,87 @@ const RegisterUser = () => {
   const [info, setInfo] = useState('');
   const [verified, setVerified] = useState(false);
 
+  // Fetch counties on mount
+  useEffect(() => {
+    const fetchCounties = async () => {
+      const { data, error } = await supabase.from('counties').select('*').order('name');
+      if (!error) setCounties(data);
+    };
+    fetchCounties();
+  }, []);
+
+  // Fetch subcounties when county changes
+  useEffect(() => {
+    if (selectedCounty) {
+      const fetchSubcounties = async () => {
+        const { data, error } = await supabase
+          .from('subcounties')
+          .select('*')
+          .eq('county_id', selectedCounty)
+          .order('name');
+        if (!error) setSubcounties(data);
+        setSelectedSubcounty('');
+        setWards([]);
+        setSelectedWard('');
+        setPollingCentres([]);
+        setSelectedPollingCentre('');
+      };
+      fetchSubcounties();
+    }
+  }, [selectedCounty]);
+
+  // Fetch wards when subcounty changes
+  useEffect(() => {
+    if (selectedSubcounty) {
+      const fetchWards = async () => {
+        const { data, error } = await supabase
+          .from('wards')
+          .select('*')
+          .eq('subcounty_id', selectedSubcounty)
+          .order('name');
+        if (!error) setWards(data);
+        setSelectedWard('');
+        setPollingCentres([]);
+        setSelectedPollingCentre('');
+      };
+      fetchWards();
+    }
+  }, [selectedSubcounty]);
+
+  // Fetch polling centres when ward changes
+  useEffect(() => {
+    if (selectedWard) {
+      const fetchPollingCentres = async () => {
+        const { data, error } = await supabase
+          .from('polling_centres')
+          .select('*')
+          .eq('ward_id', selectedWard)
+          .order('name');
+        if (!error) setPollingCentres(data);
+        setSelectedPollingCentre('');
+      };
+      fetchPollingCentres();
+    }
+  }, [selectedWard]);
+
   const handleRegister = async (e) => {
     e.preventDefault();
 
+    if (!selectedCounty || !selectedSubcounty || !selectedWard || !selectedPollingCentre) {
+      setInfo('Please select your location (county, subcounty, ward, polling centre).');
+      return;
+    }
     if (!mobile.startsWith('2547') || mobile.length !== 12) {
       setInfo('Please enter a valid Kenyan mobile number, e.g. 2547XXXXXXXXX.');
       return;
     }
-
-    // Simple email validation
     if (!/\S+@\S+\.\S+/.test(email)) {
       setInfo('Please enter a valid email address.');
       return;
     }
-
     const otp = generateOtp();
     setGeneratedOtp(otp);
     setInfo('Sending OTP to your email...');
-
     const result = await sendEmailOtp(email, otp);
     if (result.success) {
       setStep(2);
@@ -57,6 +133,41 @@ const RegisterUser = () => {
 
       {step === 1 && (
         <form onSubmit={handleRegister}>
+          {/* LOCATION SELECTION */}
+          <label>
+            County:<br />
+            <select value={selectedCounty} onChange={e => setSelectedCounty(e.target.value)} required style={{ padding: 8, width: '90%', margin: '1rem 0' }}>
+              <option value="">--Select County--</option>
+              {counties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <br />
+          <label>
+            Subcounty:<br />
+            <select value={selectedSubcounty} onChange={e => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ padding: 8, width: '90%', margin: '1rem 0' }}>
+              <option value="">--Select Subcounty--</option>
+              {subcounties.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+          <br />
+          <label>
+            Ward:<br />
+            <select value={selectedWard} onChange={e => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ padding: 8, width: '90%', margin: '1rem 0' }}>
+              <option value="">--Select Ward--</option>
+              {wards.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+          </label>
+          <br />
+          <label>
+            Polling Centre:<br />
+            <select value={selectedPollingCentre} onChange={e => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ padding: 8, width: '90%', margin: '1rem 0' }}>
+              <option value="">--Select Polling Centre--</option>
+              {pollingCentres.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+          <br />
+
+          {/* USER DETAILS */}
           <label>
             Mobile Number:<br />
             <input
