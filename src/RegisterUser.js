@@ -43,7 +43,7 @@ const RegisterUser = () => {
         const { data, error } = await supabase
           .from('subcounties')
           .select('*')
-          .eq('county_id', selectedCounty)
+          .eq('county_code', selectedCounty)
           .order('name');
         if (!error) setSubcounties(data);
         setSelectedSubcounty('');
@@ -53,6 +53,13 @@ const RegisterUser = () => {
         setSelectedPollingCentre('');
       };
       fetchSubcounties();
+    } else {
+      setSubcounties([]);
+      setSelectedSubcounty('');
+      setWards([]);
+      setSelectedWard('');
+      setPollingCentres([]);
+      setSelectedPollingCentre('');
     }
   }, [selectedCounty]);
 
@@ -63,7 +70,7 @@ const RegisterUser = () => {
         const { data, error } = await supabase
           .from('wards')
           .select('*')
-          .eq('subcounty_id', selectedSubcounty)
+          .eq('subcounty_code', selectedSubcounty)
           .order('name');
         if (!error) setWards(data);
         setSelectedWard('');
@@ -71,6 +78,11 @@ const RegisterUser = () => {
         setSelectedPollingCentre('');
       };
       fetchWards();
+    } else {
+      setWards([]);
+      setSelectedWard('');
+      setPollingCentres([]);
+      setSelectedPollingCentre('');
     }
   }, [selectedSubcounty]);
 
@@ -81,12 +93,15 @@ const RegisterUser = () => {
         const { data, error } = await supabase
           .from('polling_centres')
           .select('*')
-          .eq('ward_id', selectedWard)
+          .eq('ward_code', selectedWard)
           .order('name');
         if (!error) setPollingCentres(data);
         setSelectedPollingCentre('');
       };
       fetchPollingCentres();
+    } else {
+      setPollingCentres([]);
+      setSelectedPollingCentre('');
     }
   }, [selectedWard]);
 
