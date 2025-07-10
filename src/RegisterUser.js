@@ -164,7 +164,7 @@ const RegisterUser = () => {
             <select value={selectedSubcounty} onChange={e => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ padding: 8, width: '90%', margin: '1rem 0' }}>
               <option value="">--Select Subcounty--</option>
               {subcounties.map(s => (
-                <option key={s.subcounty_code} value={s.subcounty_code}>{s.name}</option>
+                <option key={s.code} value={s.code}>{s.name}</option>
               ))}
             </select>
           </label>
@@ -174,7 +174,7 @@ const RegisterUser = () => {
             <select value={selectedWard} onChange={e => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ padding: 8, width: '90%', margin: '1rem 0' }}>
               <option value="">--Select Ward--</option>
               {wards.map(w => (
-                <option key={w.ward_code} value={w.ward_code}>{w.name}</option>
+                <option key={w.code} value={w.code}>{w.name}</option>
               ))}
             </select>
           </label>
