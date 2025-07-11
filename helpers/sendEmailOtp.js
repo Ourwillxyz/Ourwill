@@ -1,6 +1,11 @@
 // helpers/sendEmailOtp.js
 
 export const sendEmailOtp = async (email, otp) => {
+  if (typeof window === 'undefined') {
+    // Prevent running this function during server-side rendering
+    return { success: false, message: "Window is undefined. Must run client-side." };
+  }
+
   try {
     const response = await fetch("/api/send-otp", {
       method: "POST",
