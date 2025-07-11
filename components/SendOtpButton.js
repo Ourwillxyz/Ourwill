@@ -2,11 +2,11 @@ import React, { useState } from "react";
 
 export default function SendOtpButton() {
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [otp, setOtp] = useState("");
 
-  // Generate a random 6-digit OTP for demo (you can change logic as needed)
+  // Function to generate a 6-digit OTP
   function generateOtp() {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
@@ -15,9 +15,12 @@ export default function SendOtpButton() {
     e.preventDefault();
     setLoading(true);
     setMessage("");
+
+    // Generate OTP
     const otpValue = generateOtp();
     setOtp(otpValue);
 
+    // Send POST request to backend API
     try {
       const res = await fetch("/api/send-otp", {
         method: "POST",
@@ -38,22 +41,44 @@ export default function SendOtpButton() {
   }
 
   return (
-    <form onSubmit={handleSendOtp}>
-      <label>
-        Email:
+    <form onSubmit={handleSendOtp} style={{ maxWidth: 350, margin: "auto" }}>
+      <label style={{ display: "block", margin: "1em 0 0.5em" }}>
+        Email address:
         <input
           type="email"
           value={email}
           required
           onChange={e => setEmail(e.target.value)}
           placeholder="Enter your email"
+          style={{ width: "100%", padding: "0.5em", marginTop: "0.3em" }}
         />
       </label>
-      <button type="submit" disabled={loading}>
+      <button
+        type="submit"
+        disabled={loading || !email}
+        style={{
+          marginTop: "1em",
+          padding: "0.5em 1.5em",
+          background: "#0070f3",
+          color: "#fff",
+          border: "none",
+          borderRadius: 4,
+          cursor: loading ? "not-allowed" : "pointer",
+        }}
+      >
         {loading ? "Sending..." : "Send OTP"}
       </button>
-      {message && <div>{message}</div>}
-      {otp && <div>Your OTP (for demo): {otp}</div>}
+      {message && (
+        <div style={{ marginTop: "1em", color: message.includes("OTP sent") ? "green" : "red" }}>
+          {message}
+        </div>
+      )}
+      {/* For demo only: show generated OTP (remove in production!) */}
+      {otp && (
+        <div style={{ marginTop: "1em", color: "#333", fontSize: "0.95em" }}>
+          <strong>Generated OTP (for demo):</strong> {otp}
+        </div>
+      )}
     </form>
   );
 }
