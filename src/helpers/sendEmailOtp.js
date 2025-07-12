@@ -1,3 +1,7 @@
+/**
+ * Helper function to send OTP to user's email via backend API
+ * Usage: await sendEmailOtp(email, otp)
+ */
 export const sendEmailOtp = async (email, otp) => {
   try {
     const response = await fetch('/api/send-otp', {
@@ -9,8 +13,16 @@ export const sendEmailOtp = async (email, otp) => {
     });
 
     const data = await response.json();
-    return data; // { success: true/false, message: "..." }
+    return {
+      success: response.ok,
+      message: data.message || 'No message returned',
+      error: data.error || null,
+    };
   } catch (error) {
-    return { success: false, message: 'Failed to send OTP.', error: error.message };
+    return {
+      success: false,
+      message: 'Failed to send OTP due to a network or server error.',
+      error: error.message,
+    };
   }
 };
