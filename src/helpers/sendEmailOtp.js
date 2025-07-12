@@ -1,14 +1,4 @@
-// src/helpers/sendEmailOtp.js
-
 export const sendEmailOtp = async (email, otp) => {
-  // This check ensures the code only runs in the browser (client-side)
-  if (typeof window === 'undefined') {
-    return {
-      success: false,
-      message: 'Cannot send OTP from server-side.',
-    };
-  }
-
   try {
     const response = await fetch('/api/send-otp', {
       method: 'POST',
@@ -19,13 +9,8 @@ export const sendEmailOtp = async (email, otp) => {
     });
 
     const data = await response.json();
-
-    return {
-      success: response.ok,
-      message: data.message || 'No message returned',
-    };
+    return data; // { success: true/false, message: "..." }
   } catch (error) {
-    console.error('Error in sendEmailOtp:', error);
-    return {
-      success: false,
-      message: 'Failed to send OTP due to a network or se
+    return { success: false, message: 'Failed to send OTP.', error: error.message };
+  }
+};
