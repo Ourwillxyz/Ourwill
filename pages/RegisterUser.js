@@ -1,13 +1,12 @@
-// pages/RegisterUser.js
-
 import React, { useState, useEffect } from 'react';
+import { sendEmailOtp } from '../src/helpers/sendEmailOtp';
 import { supabase } from '../src/supabaseClient';
 
 function generateOtp() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-export default function RegisterUser() {
+const RegisterUser = () => {
   const [counties, setCounties] = useState([]);
   const [subcounties, setSubcounties] = useState([]);
   const [wards, setWards] = useState([]);
@@ -20,164 +19,219 @@ export default function RegisterUser() {
 
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [inputOtp, setInputOtp] = useState('');
   const [step, setStep] = useState(1);
   const [info, setInfo] = useState('');
   const [verified, setVerified] = useState(false);
 
   useEffect(() => {
     const fetchCounties = async () => {
-      const { data } = await supabase.from('counties').select('*').order('name');
-      setCounties(data || []);
+      const { data, error } = await supabase.from('counties').select('*').order('name');
+      if (!error) setCounties(data);
     };
     fetchCounties();
   }, []);
 
   useEffect(() => {
-    if (!selectedCounty) return;
-    const fetchSub = async () => {
-      const { data } = await supabase.from('subcounties').select('*').eq('county_code', selectedCounty).order('name');
-      setSubcounties(data || []);
-    };
-    fetchSub();
+    if (selectedCounty) {
+      const fetchSubcounties = async () => {
+        const { data, error } = await supabase
+          .from('subcounties')
+          .select('*')
+          .eq('county_code', selectedCounty)
+          .order('name');
+        if (!error) setSubcounties(data);
+        setSelectedSubcounty('');
+        setWards([]);
+        setSelectedWard('');
+        setPollingCentres([]);
+        setSelectedPollingCentre('');
+      };
+      fetchSubcounties();
+    }
   }, [selectedCounty]);
 
   useEffect(() => {
-    if (!selectedSubcounty) return;
-    const fetchWards = async () => {
-      const { data } = await supabase.from('wards').select('*').eq('subcounty_code', selectedSubcounty).order('name');
-      setWards(data || []);
-    };
-    fetchWards();
+    if (selectedSubcounty) {
+      const fetchWards = async () => {
+        const { data, error } = await supabase
+          .from('wards')
+          .select('*')
+          .eq('subcounty_code', selectedSubcounty)
+          .order('name');
+        if (!error) setWards(data);
+        setSelectedWard('');
+        setPollingCentres([]);
+        setSelectedPollingCentre('');
+      };
+      fetchWards();
+    }
   }, [selectedSubcounty]);
 
   useEffect(() => {
-    if (!selectedWard) return;
-    const fetchPCs = async () => {
-      const { data } = await supabase.from('polling_centres').select('*').eq('ward_code', selectedWard).order('name');
-      setPollingCentres(data || []);
-    };
-    fetchPCs();
+    if (selectedWard) {
+      const fetchPollingCentres = async () => {
+        const { data, error } = await supabase
+          .from('polling_centres')
+          .select('*')
+          .eq('ward_code', selectedWard)
+          .order('name');
+        if (!error) setPollingCentres(data);
+        setSelectedPollingCentre('');
+      };
+      fetchPollingCentres();
+    }
   }, [selectedWard]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
 
     if (!selectedCounty || !selectedSubcounty || !selectedWard || !selectedPollingCentre) {
-      setInfo('📍 Please select your full location.');
+      setInfo('⚠️ Please select your location.');
       return;
     }
-
     if (!mobile.startsWith('2547') || mobile.length !== 12) {
-      setInfo('📱 Enter valid Kenyan mobile: e.g. 2547XXXXXXXX');
+      setInfo('⚠️ Enter valid Kenyan mobile e.g. 2547XXXXXXXX');
       return;
     }
-
     if (!/\S+@\S+\.\S+/.test(email)) {
-      setInfo('✉️ Invalid email address.');
+      setInfo('⚠️ Enter valid email address.');
       return;
     }
 
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    if (error) {
-      setInfo('❌ Error sending magic link. Try again.');
-    } else {
-      setInfo('✅ Magic link sent! Check your email to continue.');
+    const otp = generateOtp();
+    setGeneratedOtp(otp);
+    setInfo('📤 Sending OTP to your email...');
+    const result = await sendEmailOtp(email, otp);
+
+    if (result.success) {
       setStep(2);
+      setInfo('✅ OTP sent! Check your email.');
+    } else {
+      setInfo('❌ Failed to send OTP.');
+    }
+  };
+
+  const handleVerify = (e) => {
+    e.preventDefault();
+    if (inputOtp === generatedOtp) {
+      setVerified(true);
+      setInfo('🎉 Registration complete!');
+    } else {
+      setInfo('❌ Incorrect OTP.');
     }
   };
 
   return (
-    <div style={{ background: '#f5f7fa', minHeight: '100vh', padding: '2rem' }}>
-      <div style={{
-        maxWidth: 500,
-        margin: '0 auto',
-        background: 'white',
-        borderRadius: 12,
-        padding: '2rem',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        fontFamily: 'Arial, sans-serif'
-      }}>
-        <h2 style={{ textAlign: 'center', marginBottom: 20 }}>🗳️ Register to Vote</h2>
-
-        {step === 1 && (
-          <form onSubmit={handleRegister}>
-            <label><b>County</b><br />
-              <select required value={selectedCounty} onChange={e => setSelectedCounty(e.target.value)} style={selectStyle}>
-                <option value="">--Select--</option>
-                {counties.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-              </select>
-            </label><br />
-
-            <label><b>Subcounty</b><br />
-              <select required value={selectedSubcounty} onChange={e => setSelectedSubcounty(e.target.value)} style={selectStyle} disabled={!selectedCounty}>
-                <option value="">--Select--</option>
-                {subcounties.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
-              </select>
-            </label><br />
-
-            <label><b>Ward</b><br />
-              <select required value={selectedWard} onChange={e => setSelectedWard(e.target.value)} style={selectStyle} disabled={!selectedSubcounty}>
-                <option value="">--Select--</option>
-                {wards.map(w => <option key={w.code} value={w.code}>{w.name}</option>)}
-              </select>
-            </label><br />
-
-            <label><b>Polling Centre</b><br />
-              <select required value={selectedPollingCentre} onChange={e => setSelectedPollingCentre(e.target.value)} style={selectStyle} disabled={!selectedWard}>
-                <option value="">--Select--</option>
-                {pollingCentres.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </label><br />
-
-            <label><b>Mobile Number</b><br />
-              <input type="text" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="e.g. 2547XXXXXXX" style={inputStyle} required />
-            </label><br />
-
-            <label><b>Email</b><br />
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" style={inputStyle} required />
-            </label><br />
-
-            <button type="submit" style={buttonStyle}>Send Magic Link</button>
-          </form>
-        )}
-
-        {step === 2 && (
-          <div style={{ textAlign: 'center', paddingTop: 20 }}>
-            <p>📨 Check your email for the magic login link.</p>
-            <p>Once verified, you’ll be redirected automatically.</p>
-          </div>
-        )}
-
-        {info && <div style={{ marginTop: 20, color: '#333', fontSize: '1rem' }}>{info}</div>}
+    <div style={{
+      maxWidth: 500,
+      margin: '2rem auto',
+      padding: '2rem',
+      backgroundColor: '#ffffff',
+      borderRadius: '12px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+      fontFamily: 'Segoe UI, sans-serif'
+    }}>
+      {/* Logo and brand */}
+      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <img src="/ourwill-logo.png" alt="OurWill Logo" style={{ width: 80, marginBottom: 10 }} />
+        <h2 style={{ fontWeight: 'bold', fontSize: '1.8rem', marginBottom: '0.5rem' }}>OurWill</h2>
+        <p style={{ color: '#666', marginTop: 0 }}>🗳️ Register to vote, verify via email</p>
       </div>
+
+      {/* STEP 1: Register */}
+      {step === 1 && (
+        <form onSubmit={handleRegister}>
+          <label>County:
+            <select value={selectedCounty} onChange={e => setSelectedCounty(e.target.value)} required style={inputStyle}>
+              <option value="">--Select County--</option>
+              {counties.map(c => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>Subcounty:
+            <select value={selectedSubcounty} onChange={e => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={inputStyle}>
+              <option value="">--Select Subcounty--</option>
+              {subcounties.map(s => (
+                <option key={s.code} value={s.code}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>Ward:
+            <select value={selectedWard} onChange={e => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={inputStyle}>
+              <option value="">--Select Ward--</option>
+              {wards.map(w => (
+                <option key={w.code} value={w.code}>{w.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>Polling Centre:
+            <select value={selectedPollingCentre} onChange={e => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={inputStyle}>
+              <option value="">--Select Centre--</option>
+              {pollingCentres.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>Mobile Number:
+            <input type="text" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="e.g. 2547XXXXXX" required style={inputStyle} />
+          </label>
+
+          <label>Email Address:
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. name@example.com" required style={inputStyle} />
+          </label>
+
+          <button type="submit" style={buttonStyle}>Send OTP</button>
+        </form>
+      )}
+
+      {/* STEP 2: Verify */}
+      {step === 2 && !verified && (
+        <form onSubmit={handleVerify}>
+          <label>Enter OTP sent to your email:
+            <input type="text" value={inputOtp} onChange={e => setInputOtp(e.target.value)} required maxLength={4} style={inputStyle} />
+          </label>
+          <button type="submit" style={buttonStyle}>Verify</button>
+        </form>
+      )}
+
+      {/* SUCCESS */}
+      {verified && (
+        <p style={{ color: 'green', fontWeight: 'bold', textAlign: 'center' }}>✅ You’re verified!</p>
+      )}
+
+      {/* Feedback */}
+      {info && (
+        <div style={{ marginTop: '1rem', color: info.startsWith('✅') ? 'green' : (info.startsWith('❌') ? 'red' : '#555') }}>
+          {info}
+        </div>
+      )}
     </div>
   );
-}
-
-const selectStyle = {
-  padding: '10px',
-  width: '100%',
-  margin: '8px 0',
-  borderRadius: '6px',
-  border: '1px solid #ccc'
 };
 
 const inputStyle = {
-  padding: '10px',
   width: '100%',
-  margin: '8px 0',
+  padding: '10px',
+  margin: '10px 0 20px',
   borderRadius: '6px',
-  border: '1px solid #ccc'
+  border: '1px solid #ddd'
 };
 
 const buttonStyle = {
-  padding: '12px',
-  width: '100%',
-  backgroundColor: '#0066cc',
-  color: '#fff',
+  padding: '10px 20px',
+  backgroundColor: '#007bff',
+  color: 'white',
   border: 'none',
   borderRadius: '6px',
-  fontSize: '1rem',
-  marginTop: '1rem',
-  cursor: 'pointer'
+  cursor: 'pointer',
+  width: '100%'
 };
+
+export default RegisterUser;
