@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../src/supabaseClient';
-import { useRouter } from 'next/router';
 
 export default function RegisterUser() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [info, setInfo] = useState('');
-  const router = useRouter();
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -38,15 +36,19 @@ export default function RegisterUser() {
     <div style={{
       background: '#f4faff',
       minHeight: '100vh',
-      padding: '2rem',
+      paddingTop: '4rem',
       fontFamily: 'Arial, sans-serif',
       color: '#222',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center'
     }}>
-      <img src="/ourwill-logo.png" alt="OurWill Logo" style={{ width: 120, marginBottom: 20 }} />
-      <h2 style={{ color: '#0070f3' }}>User Registration</h2>
+      <img
+        src="/ourwill-logo.png"
+        alt="OurWill Logo"
+        style={{ width: '200px', height: 'auto', marginBottom: '2rem' }}
+      />
+
       <form onSubmit={handleRegister} style={{
         background: 'white',
         padding: '2rem',
@@ -55,14 +57,14 @@ export default function RegisterUser() {
         width: '100%',
         maxWidth: 400
       }}>
-        <label>Name:<br />
+        <label>Full Name:<br />
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="Full Name"
+            placeholder="e.g. Jane Doe"
             required
-            style={{ width: '100%', padding: 8, marginTop: 4, marginBottom: 12 }}
+            style={{ width: '100%', padding: 10, marginTop: 4, marginBottom: 16 }}
           />
         </label>
         <label>Mobile Number:<br />
@@ -70,9 +72,9 @@ export default function RegisterUser() {
             type="text"
             value={mobile}
             onChange={e => setMobile(e.target.value)}
-            placeholder="e.g. 2547XXXXXXX"
+            placeholder="2547XXXXXXXX"
             required
-            style={{ width: '100%', padding: 8, marginTop: 4, marginBottom: 12 }}
+            style={{ width: '100%', padding: 10, marginTop: 4, marginBottom: 16 }}
           />
         </label>
         <label>Email Address:<br />
@@ -82,24 +84,25 @@ export default function RegisterUser() {
             onChange={e => setEmail(e.target.value)}
             placeholder="you@example.com"
             required
-            style={{ width: '100%', padding: 8, marginTop: 4, marginBottom: 12 }}
+            style={{ width: '100%', padding: 10, marginTop: 4, marginBottom: 16 }}
           />
         </label>
         <button type="submit" style={{
           width: '100%',
-          padding: '10px 0',
+          padding: '12px',
           backgroundColor: '#0070f3',
           color: 'white',
           border: 'none',
           borderRadius: 4,
+          fontSize: '1rem',
           cursor: 'pointer'
         }}>
-          Register
+          Send Magic Link
         </button>
       </form>
 
       {info && (
-        <p style={{ marginTop: 16, color: info.includes('✅') ? 'green' : 'red' }}>
+        <p style={{ marginTop: 20, color: info.includes('✅') ? 'green' : 'red' }}>
           {info}
         </p>
       )}
