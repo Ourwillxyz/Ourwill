@@ -17,6 +17,7 @@ const RegisterUser = () => {
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
   const [info, setInfo] = useState('');
 
   useEffect(() => {
@@ -83,9 +84,12 @@ const RegisterUser = () => {
 
     if (!username.trim()) return setInfo('❌ Please enter a username.');
     if (!/\S+@\S+\.\S+/.test(email)) return setInfo('❌ Please enter a valid email.');
+    if (!/^\d{9}$/.test(mobile)) return setInfo('❌ Enter a valid 9-digit mobile number.');
     if (!selectedCounty || !selectedSubcounty || !selectedWard || !selectedPollingCentre) {
       return setInfo('❌ Please select your full location.');
     }
+
+    const formattedMobile = `254${mobile}`;
 
     setInfo('⏳ Sending login link to your email...');
 
@@ -105,6 +109,7 @@ const RegisterUser = () => {
     localStorage.setItem('pending_registration', JSON.stringify({
       email,
       username,
+      mobile: formattedMobile,
       county_code: selectedCounty,
       subcounty_code: selectedSubcounty,
       ward_code: selectedWard,
@@ -132,6 +137,16 @@ const RegisterUser = () => {
           placeholder="Email address"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
+          style={{ width: '90%', padding: 10, margin: '10px 0' }}
+        />
+        <br />
+        <input
+          type="tel"
+          placeholder="Mobile e.g. 712345678"
+          value={mobile}
+          onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))}
+          maxLength={9}
           required
           style={{ width: '90%', padding: 10, margin: '10px 0' }}
         />
