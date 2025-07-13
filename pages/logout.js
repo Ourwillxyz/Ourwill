@@ -2,29 +2,18 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { createClient } from '@supabase/supabase-js';
-
-// Create Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { supabase } from '../utils/supabaseClient';
 
 export default function Logout() {
   const router = useRouter();
 
   useEffect(() => {
-    const logout = async () => {
-      await supabase.auth.signOut(); // Ends the session
-      router.push('/'); // Redirect to home page or login
+    const doLogout = async () => {
+      await supabase.auth.signOut();
+      router.replace('/');
     };
-
-    logout();
+    doLogout();
   }, [router]);
 
-  return (
-    <div style={{ padding: 20 }}>
-      <p>Logging you out...</p>
-    </div>
-  );
+  return <p>Logging out...</p>;
 }
