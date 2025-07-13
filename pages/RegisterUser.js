@@ -1,4 +1,3 @@
-// pages/RegisterUser.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../src/supabaseClient';
 import Image from 'next/image';
@@ -91,20 +90,31 @@ const RegisterUser = () => {
 
     const formattedMobile = `254${mobile}`;
 
+    // Store entry in Supabase with status: pending
+    const { error: upsertError } = await supabase.from('voter').upsert({
+      email,
+      username,
+      mobile: formattedMobile,
+      county_code: selectedCounty,
+      subcounty_code: selectedSubcounty,
+      ward_code: selectedWard,
+      polling_centre_id: selectedPollingCentre,
+      status: 'pending',
+    }, {
+      onConflict: 'email',
+    });
+
+    if (upsertError) {
+      console.error('Supabase upsert failed:', upsertError);
+      return setInfo('❌ This email or mobile has already been used.');
+    }
+
     setInfo('⏳ Sending login link to your email...');
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/callback`,
-        data: {
-          username,
-          mobile: formattedMobile,
-          county_code: selectedCounty,
-          subcounty_code: selectedSubcounty,
-          ward_code: selectedWard,
-          polling_centre_id: selectedPollingCentre,
-        },
       },
     });
 
@@ -113,12 +123,24 @@ const RegisterUser = () => {
       return setInfo('❌ Failed to send login link. Try again.');
     }
 
-    setInfo('✅ Check your email for the login link.');
+    setInfo('✅ Check your email to complete registration.');
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: '2rem auto', padding: 24, textAlign: 'center', border: '1px solid #eee', borderRadius: 12 }}>
-      <Image src={logo} alt="OurWill Logo" width={120} />
+    <div
+      style={{
+        maxWidth: 500,
+        margin: '2rem auto',
+        padding: 24,
+        textAlign: 'center',
+        border: '1px solid #eee',
+        borderRadius: 12,
+        background: 'url("/kenya-flag.jpg") no-repeat center center',
+        backgroundSize: 'cover',
+        color: '#000',
+      }}
+    >
+      <Image src={logo} alt="OurWill Logo" width={140} />
       <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
         <input
           type="text"
@@ -140,31 +162,37 @@ const RegisterUser = () => {
           type="tel"
           placeholder="Mobile e.g. 712345678"
           value={mobile}
-          onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))}
+          onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
           maxLength={9}
           required
           style={{ width: '90%', padding: 10, margin: '10px 0' }}
         />
+
         <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select County --</option>
           {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
+
         <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select Subcounty --</option>
           {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
         </select>
+
         <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select Ward --</option>
           {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
         </select>
+
         <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select Polling Centre --</option>
           {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
+
         <button type="submit" style={{ marginTop: 16, padding: '10px 20px' }}>
           Register / Login
         </button>
-        {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
+
+        {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#000' }}>{info}</p>}
       </form>
     </div>
   );
