@@ -2,28 +2,38 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 
-function generateOtp() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
-}
-
 export default function RegisterUser() {
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
-  const [mobile, setMobile] = useState('');
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [counties, setCounties] = useState([]);
   const [subcounties, setSubcounties] = useState([]);
   const [wards, setWards] = useState([]);
   const [pollingCentres, setPollingCentres] = useState([]);
 
-  const [county, setCounty] = useState('');
-  const [subcounty, setSubcounty] = useState('');
-  const [ward, setWard] = useState('');
-  const [pollingCentre, setPollingCentre] = useState('');
+  const [selectedCounty, setSelectedCounty] = useState('');
+  const [selectedSubcounty, setSelectedSubcounty] = useState('');
+  const [selectedWard, setSelectedWard] = useState('');
+  const [selectedPollingCentre, setSelectedPollingCentre] = useState('');
+  const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [message, setMessage] = useState('');
 
-  const [status, setStatus] = useState('');
+  useEffect(() => {
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-  // Fetch counties
+      if (session?.user) {
+        router.replace('/dashboard');
+      } else {
+        setSessionChecked(true);
+      }
+    };
+    checkSession();
+  }, []);
+
   useEffect(() => {
     const fetchCounties = async () => {
       const { data } = await supabase.from('counties').select('*').order('name');
@@ -32,124 +42,118 @@ export default function RegisterUser() {
     fetchCounties();
   }, []);
 
-  // Fetch subcounties
   useEffect(() => {
-    if (!county) return;
-    const fetchSubs = async () => {
-      const { data } = await supabase
-        .from('subcounties')
-        .select('*')
-        .eq('county_code', county)
-        .order('name');
-      if (data) setSubcounties(data);
+    const fetchSubcounties = async () => {
+      if (selectedCounty) {
+        const { data } = await supabase
+          .from('subcounties')
+          .select('*')
+          .eq('county_code', selectedCounty)
+          .order('name');
+        if (data) setSubcounties(data);
+      } else {
+        setSubcounties([]);
+        setSelectedSubcounty('');
+      }
     };
-    fetchSubs();
-  }, [county]);
+    fetchSubcounties();
+  }, [selectedCounty]);
 
-  // Fetch wards
   useEffect(() => {
-    if (!subcounty) return;
     const fetchWards = async () => {
-      const { data } = await supabase
-        .from('wards')
-        .select('*')
-        .eq('subcounty_code', subcounty)
-        .order('name');
-      if (data) setWards(data);
+      if (selectedSubcounty) {
+        const { data } = await supabase
+          .from('wards')
+          .select('*')
+          .eq('subcounty_code', selectedSubcounty)
+          .order('name');
+        if (data) setWards(data);
+      } else {
+        setWards([]);
+        setSelectedWard('');
+      }
     };
     fetchWards();
-  }, [subcounty]);
+  }, [selectedSubcounty]);
 
-  // Fetch polling centres
   useEffect(() => {
-    if (!ward) return;
-    const fetchCentres = async () => {
-      const { data } = await supabase
-        .from('polling_centres')
-        .select('*')
-        .eq('ward_code', ward)
-        .order('name');
-      if (data) setPollingCentres(data);
+    const fetchPolling = async () => {
+      if (selectedWard) {
+        const { data } = await supabase
+          .from('polling_centres')
+          .select('*')
+          .eq('ward_code', selectedWard)
+          .order('name');
+        if (data) setPollingCentres(data);
+      } else {
+        setPollingCentres([]);
+        setSelectedPollingCentre('');
+      }
     };
-    fetchCentres();
-  }, [ward]);
+    fetchPolling();
+  }, [selectedWard]);
 
-  const handleSubmit = async (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
+    setMessage('');
 
-    if (!email || !mobile || !county || !subcounty || !ward || !pollingCentre) {
-      setStatus('⚠️ Please fill in all fields.');
+    if (!email || !mobile || !selectedCounty || !selectedSubcounty || !selectedWard || !selectedPollingCentre) {
+      setMessage('❌ Please fill all fields.');
       return;
     }
 
-    setStatus('🔄 Sending magic link...');
-
-    // Store voter info locally for retrieval after login
-    const voterData = {
+    // Save info temporarily to localStorage
+    const payload = {
       email,
       mobile,
-      county_code: county,
-      subcounty_code: subcounty,
-      ward_code: ward,
-      polling_centre_id: pollingCentre,
+      county_code: selectedCounty,
+      subcounty_code: selectedSubcounty,
+      ward_code: selectedWard,
+      polling_centre_id: selectedPollingCentre,
     };
 
-    localStorage.setItem('pendingVoter', JSON.stringify(voterData));
+    localStorage.setItem('pendingVoter', JSON.stringify(payload));
 
-    // Send Supabase magic link
+    // Send magic link
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: 'https://your-vercel-app.vercel.app/callback',
+        emailRedirectTo: `${window.location.origin}/callback`,
       },
     });
 
     if (error) {
-      setStatus(`❌ Error sending magic link: ${error.message}`);
+      console.error('Magic link error:', error);
+      setMessage('❌ Failed to send verification email. Try again.');
     } else {
-      setStatus('✅ Magic link sent! Check your inbox.');
+      setMessage('✅ Magic link sent! Please check your email.');
     }
   };
 
+  if (!sessionChecked) {
+    return (
+      <div style={{ padding: 40 }}>
+        <h3>Checking user session...</h3>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ maxWidth: 500, margin: 'auto', padding: 40 }}>
-      <h2>User Registration</h2>
-      <form onSubmit={handleSubmit}>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="Email" style={{ width: '100%', padding: 8, margin: '10px 0' }} />
-        <input type="text" value={mobile} onChange={(e) => setMobile(e.target.value)} required placeholder="Mobile (2547XXXXXXXX)" style={{ width: '100%', padding: 8, margin: '10px 0' }} />
-
-        <select value={county} onChange={(e) => setCounty(e.target.value)} required style={{ width: '100%', padding: 8, margin: '10px 0' }}>
-          <option value="">-- Select County --</option>
-          {counties.map((c) => (
-            <option key={c.code} value={c.code}>{c.name}</option>
-          ))}
-        </select>
-
-        <select value={subcounty} onChange={(e) => setSubcounty(e.target.value)} required style={{ width: '100%', padding: 8, margin: '10px 0' }}>
-          <option value="">-- Select Subcounty --</option>
-          {subcounties.map((s) => (
-            <option key={s.code} value={s.code}>{s.name}</option>
-          ))}
-        </select>
-
-        <select value={ward} onChange={(e) => setWard(e.target.value)} required style={{ width: '100%', padding: 8, margin: '10px 0' }}>
-          <option value="">-- Select Ward --</option>
-          {wards.map((w) => (
-            <option key={w.code} value={w.code}>{w.name}</option>
-          ))}
-        </select>
-
-        <select value={pollingCentre} onChange={(e) => setPollingCentre(e.target.value)} required style={{ width: '100%', padding: 8, margin: '10px 0' }}>
-          <option value="">-- Select Polling Centre --</option>
-          {pollingCentres.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-
-        <button type="submit" style={{ padding: '10px 20px' }}>Register & Send Link</button>
-      </form>
-
-      {status && <p style={{ marginTop: 20 }}>{status}</p>}
-    </div>
-  );
-}
+    <div style={{ maxWidth: 500, margin: '2rem auto', padding: 24, border: '1px solid #ccc', borderRadius: 10 }}>
+      <h2>📝 Voter Registration</h2>
+      <form onSubmit={handleRegister}>
+        <label>
+          County:
+          <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required>
+            <option value="">--Select--</option>
+            {counties.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <br />
+        <label>
+          Subcounty:
+          <select value={select
