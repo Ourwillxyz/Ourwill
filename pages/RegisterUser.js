@@ -24,7 +24,8 @@ export default function RegisterUser() {
         setInfo(`❌ ${data.message || 'Failed to send magic link.'}`);
       }
     } catch (err) {
-      setInfo('❌ Unexpected error sending email. Please try again.');
+      console.error('Error:', err);
+      setInfo('❌ Unexpected error. Please try again.');
     }
   };
 
@@ -34,7 +35,7 @@ export default function RegisterUser() {
       <form onSubmit={handleSubmit}>
         <input
           type="email"
-          placeholder="your@email.com"
+          placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -45,7 +46,7 @@ export default function RegisterUser() {
           Send Magic Link
         </button>
       </form>
-      <p style={{ marginTop: '1rem' }}>{info}</p>
+      {info && <p style={{ marginTop: '1rem' }}>{info}</p>}
     </div>
   );
 }
