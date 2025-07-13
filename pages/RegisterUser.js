@@ -19,6 +19,12 @@ const RegisterUser = () => {
   const [mobile, setMobile] = useState('');
   const [info, setInfo] = useState('');
 
+  // Real-time validation
+  const [emailError, setEmailError] = useState('');
+  const [mobileError, setMobileError] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+
+  // Fetch location data
   useEffect(() => {
     const fetchCounties = async () => {
       const { data, error } = await supabase.from('counties').select('*').order('name');
@@ -78,36 +84,51 @@ const RegisterUser = () => {
     if (selectedWard) fetchPolling();
   }, [selectedWard]);
 
+  // Validation functions
+  const checkEmail = async (value) => {
+    setEmail(value);
+    if (!/\S+@\S+\.\S+/.test(value)) {
+      setEmailError('Invalid email format');
+      return;
+    }
+    const { data } = await supabase.from('voter').select('id').eq('email', value).maybeSingle();
+    setEmailError(data ? 'Email already used' : '');
+  };
+
+  const checkMobile = async (value) => {
+    const cleaned = value.replace(/\D/g, '');
+    setMobile(cleaned);
+    if (cleaned.length !== 9) {
+      setMobileError('Must be 9 digits');
+      return;
+    }
+    const formatted = `254${cleaned}`;
+    const { data } = await supabase.from('voter').select('id').eq('mobile', formatted).maybeSingle();
+    setMobileError(data ? 'Mobile already registered' : '');
+  };
+
+  const checkUsername = async (value) => {
+    setUsername(value);
+    if (value.length < 3) {
+      setUsernameError('Must be at least 3 characters');
+      return;
+    }
+    const { data } = await supabase.from('voter').select('id').eq('username', value).maybeSingle();
+    setUsernameError(data ? 'Username taken' : '');
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    if (!username.trim()) return setInfo('❌ Please enter a username.');
-    if (!/\S+@\S+\.\S+/.test(email)) return setInfo('❌ Please enter a valid email.');
-    if (!/^\d{9}$/.test(mobile)) return setInfo('❌ Enter a valid 9-digit mobile number.');
+    if (!username || !email || !mobile) return setInfo('❌ Fill all fields.');
+    if (emailError || mobileError || usernameError) {
+      return setInfo('❌ Fix validation errors first.');
+    }
     if (!selectedCounty || !selectedSubcounty || !selectedWard || !selectedPollingCentre) {
-      return setInfo('❌ Please select your full location.');
+      return setInfo('❌ Complete location details.');
     }
 
     const formattedMobile = `254${mobile}`;
-
-    // Store entry in Supabase with status: pending
-    const { error: upsertError } = await supabase.from('voter').upsert({
-      email,
-      username,
-      mobile: formattedMobile,
-      county_code: selectedCounty,
-      subcounty_code: selectedSubcounty,
-      ward_code: selectedWard,
-      polling_centre_id: selectedPollingCentre,
-      status: 'pending',
-    }, {
-      onConflict: 'email',
-    });
-
-    if (upsertError) {
-      console.error('Supabase upsert failed:', upsertError);
-      return setInfo('❌ This email or mobile has already been used.');
-    }
 
     setInfo('⏳ Sending login link to your email...');
 
@@ -123,50 +144,68 @@ const RegisterUser = () => {
       return setInfo('❌ Failed to send login link. Try again.');
     }
 
-    setInfo('✅ Check your email to complete registration.');
+    localStorage.setItem('pending_registration', JSON.stringify({
+      email,
+      username,
+      mobile: formattedMobile,
+      county_code: selectedCounty,
+      subcounty_code: selectedSubcounty,
+      ward_code: selectedWard,
+      polling_centre_id: selectedPollingCentre,
+    }));
+
+    setInfo('✅ Check your email for the login link.');
   };
 
   return (
     <div
       style={{
-        maxWidth: 500,
+        maxWidth: 520,
         margin: '2rem auto',
         padding: 24,
         textAlign: 'center',
-        border: '1px solid #eee',
-        borderRadius: 12,
-        background: 'url("/kenya-flag.jpg") no-repeat center center',
+        border: '1px solid #ddd',
+        borderRadius: 10,
+        backgroundImage: 'url(/kenya-flag.jpg)',
         backgroundSize: 'cover',
-        color: '#000',
+        backgroundPosition: 'center',
+        color: 'white',
+        boxShadow: '0 0 10px rgba(0,0,0,0.3)',
       }}
     >
-      <Image src={logo} alt="OurWill Logo" width={140} />
-      <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
+      <Image src={logo} alt="OurWill Logo" width={120} />
+      <form onSubmit={handleRegister} style={{ marginTop: 20 }}>
+
         <input
           type="text"
           placeholder="Username"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={(e) => checkUsername(e.target.value)}
           required
           style={{ width: '90%', padding: 10, margin: '10px 0' }}
         />
+        {usernameError && <p style={{ color: 'yellow', margin: 0 }}>{usernameError}</p>}
+
         <input
           type="email"
           placeholder="Email address"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => checkEmail(e.target.value)}
           required
           style={{ width: '90%', padding: 10, margin: '10px 0' }}
         />
+        {emailError && <p style={{ color: 'yellow', margin: 0 }}>{emailError}</p>}
+
         <input
           type="tel"
           placeholder="Mobile e.g. 712345678"
           value={mobile}
-          onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
+          onChange={(e) => checkMobile(e.target.value)}
           maxLength={9}
           required
           style={{ width: '90%', padding: 10, margin: '10px 0' }}
         />
+        {mobileError && <p style={{ color: 'yellow', margin: 0 }}>{mobileError}</p>}
 
         <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select County --</option>
@@ -188,11 +227,15 @@ const RegisterUser = () => {
           {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
 
-        <button type="submit" style={{ marginTop: 16, padding: '10px 20px' }}>
+        <button type="submit" style={{ marginTop: 20, padding: '10px 20px', background: 'white', color: '#000', fontWeight: 'bold' }}>
           Register / Login
         </button>
 
-        {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#000' }}>{info}</p>}
+        {info && (
+          <p style={{ marginTop: 20, color: info.startsWith('✅') ? '#00ffcc' : info.startsWith('❌') ? 'red' : '#ffff99' }}>
+            {info}
+          </p>
+        )}
       </form>
     </div>
   );
