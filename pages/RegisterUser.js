@@ -1,185 +1,95 @@
 // pages/RegisterUser.js
-import { useState, useEffect } from 'react';
-import { supabase } from '../src/supabaseClient';
+import { useState } from 'react';
 import Image from 'next/image';
-import logo from '../public/ourwill-logo.png';
+import logo from '/public/ourwill-logo.png';
+import { supabase } from '../src/supabaseClient';
 
-const RegisterUser = () => {
-  const [counties, setCounties] = useState([]);
-  const [subcounties, setSubcounties] = useState([]);
-  const [wards, setWards] = useState([]);
-  const [pollingCentres, setPollingCentres] = useState([]);
-
-  const [selectedCounty, setSelectedCounty] = useState('');
-  const [selectedSubcounty, setSelectedSubcounty] = useState('');
-  const [selectedWard, setSelectedWard] = useState('');
-  const [selectedPollingCentre, setSelectedPollingCentre] = useState('');
-
+export default function RegisterUser() {
   const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
   const [info, setInfo] = useState('');
-
-  useEffect(() => {
-    const fetchCounties = async () => {
-      const { data, error } = await supabase.from('counties').select('*').order('name');
-      if (!error) setCounties(data);
-    };
-    fetchCounties();
-  }, []);
-
-  useEffect(() => {
-    const fetchSubcounties = async () => {
-      if (!selectedCounty) return;
-      const { data, error } = await supabase
-        .from('subcounties')
-        .select('*')
-        .eq('county_code', selectedCounty)
-        .order('name');
-      if (!error) setSubcounties(data);
-    };
-    setSelectedSubcounty('');
-    setSelectedWard('');
-    setSelectedPollingCentre('');
-    setSubcounties([]);
-    setWards([]);
-    setPollingCentres([]);
-    if (selectedCounty) fetchSubcounties();
-  }, [selectedCounty]);
-
-  useEffect(() => {
-    const fetchWards = async () => {
-      if (!selectedSubcounty) return;
-      const { data, error } = await supabase
-        .from('wards')
-        .select('*')
-        .eq('subcounty_code', selectedSubcounty)
-        .order('name');
-      if (!error) setWards(data);
-    };
-    setSelectedWard('');
-    setSelectedPollingCentre('');
-    setWards([]);
-    setPollingCentres([]);
-    if (selectedSubcounty) fetchWards();
-  }, [selectedSubcounty]);
-
-  useEffect(() => {
-    const fetchPolling = async () => {
-      if (!selectedWard) return;
-      const { data, error } = await supabase
-        .from('polling_centres')
-        .select('*')
-        .eq('ward_code', selectedWard)
-        .order('name');
-      if (!error) setPollingCentres(data);
-    };
-    setSelectedPollingCentre('');
-    setPollingCentres([]);
-    if (selectedWard) fetchPolling();
-  }, [selectedWard]);
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    if (!username.trim()) return setInfo('❌ Please enter a username.');
-    if (!/\S+@\S+\.\S+/.test(email)) return setInfo('❌ Please enter a valid email.');
-    if (!/^\d{9}$/.test(mobile)) return setInfo('❌ Enter a valid 9-digit mobile number.');
-    if (!selectedCounty || !selectedSubcounty || !selectedWard || !selectedPollingCentre) {
-      return setInfo('❌ Please select your full location.');
+    if (!username || username.length < 3) {
+      setInfo('Username is required (min 3 characters)');
+      return;
     }
 
-    const formattedMobile = `254${mobile}`;
+    if (!/^[0-9]{9}$/.test(mobile)) {
+      setInfo('Mobile must be 9 digits (e.g. 712345678)');
+      return;
+    }
 
-    setInfo('⏳ Sending login link to your email...');
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setInfo('Enter a valid email address');
+      return;
+    }
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/callback`,
-      },
-    });
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({ email });
 
     if (error) {
-      console.error(error);
-      return setInfo('❌ Failed to send login link. Try again.');
+      setInfo('❌ Failed to send login link. Try again.');
+    } else {
+      setInfo('✅ Check your email for the magic link!');
     }
-
-    // Store metadata in localStorage for callback usage
-    localStorage.setItem('pending_registration', JSON.stringify({
-      email,
-      username,
-      mobile: formattedMobile,
-      county_code: selectedCounty,
-      subcounty_code: selectedSubcounty,
-      ward_code: selectedWard,
-      polling_centre_id: selectedPollingCentre,
-    }));
-
-    setInfo('✅ Check your email for the login link.');
+    setLoading(false);
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: '2rem auto', padding: 24, textAlign: 'center', border: '1px solid #eee', borderRadius: 12 }}>
-      <Image src={logo} alt="OurWill Logo" width={120} />
-      <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-          style={{ width: '90%', padding: 10, margin: '10px 0' }}
-        />
-        <br />
-        <input
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ width: '90%', padding: 10, margin: '10px 0' }}
-        />
-        <br />
-        <input
-          type="tel"
-          placeholder="Mobile e.g. 712345678"
-          value={mobile}
-          onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))}
-          maxLength={9}
-          required
-          style={{ width: '90%', padding: 10, margin: '10px 0' }}
-        />
-        <br />
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#fff',
+      backgroundImage: 'linear-gradient(to bottom, #006600 0%, #000000 25%, #ff0000 50%, #ffffff 100%)',
+      backgroundSize: '100% 10px',
+      backgroundRepeat: 'no-repeat',
+      paddingTop: '4rem',
+      display: 'flex',
+      justifyContent: 'center',
+    }}>
+      <div style={{
+        background: '#fff',
+        width: '90%',
+        maxWidth: 450,
+        padding: '2rem',
+        borderRadius: 12,
+        boxShadow: '0 4px 14px rgba(0,0,0,0.1)',
+        textAlign: 'center',
+      }}>
+        <Image src={logo} alt="OurWill Logo" width={120} />
+        <h2 style={{ margin: '1rem 0', color: '#000' }}>Voter Access</h2>
 
-        <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-          <option value="">-- Select County --</option>
-          {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-        </select>
-
-        <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-          <option value="">-- Select Subcounty --</option>
-          {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
-        </select>
-
-        <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-          <option value="">-- Select Ward --</option>
-          {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
-        </select>
-
-        <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-          <option value="">-- Select Polling Centre --</option>
-          {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-
-        <button type="submit" style={{ marginTop: 16, padding: '10px 20px' }}>
-          Register / Login
-        </button>
-
-        {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
-      </form>
-    </div>
-  );
-};
-
-export default RegisterUser;
+        <form onSubmit={handleRegister}>
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px',
+              marginBottom: '1rem',
+              borderRadius: 6,
+              border: '1px solid #ccc',
+            }}
+            required
+          />
+          <input
+            type="text"
+            placeholder="Mobile (e.g. 712345678)"
+            value={mobile}
+            onChange={e => setMobile(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px',
+              marginBottom: '1rem',
+              borderRadius: 6,
+              border: '1px solid #ccc',
+            }}
+            required
+          />
+          <i
