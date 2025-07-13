@@ -1,4 +1,3 @@
-// pages/RegisterUser.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../src/supabaseClient';
 import Image from 'next/image';
@@ -22,8 +21,8 @@ const RegisterUser = () => {
 
   useEffect(() => {
     const fetchCounties = async () => {
-      const { data } = await supabase.from('counties').select('*').order('name');
-      if (data) setCounties(data);
+      const { data, error } = await supabase.from('counties').select('*').order('name');
+      if (!error) setCounties(data);
     };
     fetchCounties();
   }, []);
@@ -31,12 +30,12 @@ const RegisterUser = () => {
   useEffect(() => {
     const fetchSubcounties = async () => {
       if (!selectedCounty) return;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('subcounties')
         .select('*')
         .eq('county_code', selectedCounty)
         .order('name');
-      if (data) setSubcounties(data);
+      if (!error) setSubcounties(data);
     };
     setSelectedSubcounty('');
     setSelectedWard('');
@@ -50,12 +49,12 @@ const RegisterUser = () => {
   useEffect(() => {
     const fetchWards = async () => {
       if (!selectedSubcounty) return;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('wards')
         .select('*')
         .eq('subcounty_code', selectedSubcounty)
         .order('name');
-      if (data) setWards(data);
+      if (!error) setWards(data);
     };
     setSelectedWard('');
     setSelectedPollingCentre('');
@@ -67,12 +66,12 @@ const RegisterUser = () => {
   useEffect(() => {
     const fetchPolling = async () => {
       if (!selectedWard) return;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('polling_centres')
         .select('*')
         .eq('ward_code', selectedWard)
         .order('name');
-      if (data) setPollingCentres(data);
+      if (!error) setPollingCentres(data);
     };
     setSelectedPollingCentre('');
     setPollingCentres([]);
@@ -90,7 +89,6 @@ const RegisterUser = () => {
     }
 
     const formattedMobile = `254${mobile}`;
-
     setInfo('⏳ Sending login link to your email...');
 
     const { error } = await supabase.auth.signInWithOtp({
@@ -105,7 +103,6 @@ const RegisterUser = () => {
       return setInfo('❌ Failed to send login link. Try again.');
     }
 
-    // Store metadata in localStorage
     localStorage.setItem('pending_registration', JSON.stringify({
       email,
       username,
@@ -121,57 +118,69 @@ const RegisterUser = () => {
 
   return (
     <div style={{
-      background: 'linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)), url("https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1920px-Flag_of_Kenya.svg.png") center / cover',
+      background: 'linear-gradient(rgba(255,255,255,0.75), rgba(255,255,255,0.75)), url("https://upload.wikimedia.org/wikipedia/commons/4/49/Flag_of_Kenya.svg") center / cover no-repeat',
+      backgroundAttachment: 'fixed',
       minHeight: '100vh',
       paddingTop: '3rem'
     }}>
       <div style={{
         maxWidth: 520,
-        margin: 'auto',
-        padding: 24,
+        margin: '0 auto',
+        padding: '2rem',
         textAlign: 'center',
-        background: 'white',
-        borderRadius: 12,
-        boxShadow: '0 0 10px rgba(0,0,0,0.1)'
+        backgroundColor: 'white',
+        borderRadius: '1rem',
+        boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
       }}>
-        <Image src={logo} alt="OurWill Logo" width={140} style={{ marginBottom: 16 }} />
-        <form onSubmit={handleRegister} style={{ marginTop: 8 }}>
-          <input type="text" placeholder="Username" value={username}
-            onChange={(e) => setUsername(e.target.value)} required
-            style={fieldStyle} />
-
-          <input type="email" placeholder="Email address" value={email}
-            onChange={(e) => setEmail(e.target.value)} required
-            style={fieldStyle} />
-
-          <input type="tel" placeholder="Mobile e.g. 712345678" value={mobile}
+        <Image src={logo} alt="OurWill Logo" width={160} />
+        <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            style={{ width: '90%', padding: 10, margin: '10px 0' }}
+          />
+          <input
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{ width: '90%', padding: 10, margin: '10px 0' }}
+          />
+          <input
+            type="tel"
+            placeholder="Mobile e.g. 712345678"
+            value={mobile}
             onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))}
-            maxLength={9} required style={fieldStyle} />
+            maxLength={9}
+            required
+            style={{ width: '90%', padding: 10, margin: '10px 0' }}
+          />
 
-          <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={fieldStyle}>
+          <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
             <option value="">-- Select County --</option>
             {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
           </select>
 
-          <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={fieldStyle}>
+          <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
             <option value="">-- Select Subcounty --</option>
             {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
           </select>
 
-          <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={fieldStyle}>
+          <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
             <option value="">-- Select Ward --</option>
             {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
           </select>
 
-          <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={fieldStyle}>
+          <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
             <option value="">-- Select Polling Centre --</option>
             {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
 
-          <button type="submit" style={{
-            width: '100%', padding: '12px 0', marginTop: 16, backgroundColor: '#006400',
-            color: 'white', fontWeight: 'bold', border: 'none', borderRadius: 6, cursor: 'pointer'
-          }}>
+          <button type="submit" style={{ marginTop: 16, padding: '10px 20px', backgroundColor: '#0B5ED7', color: '#fff', border: 'none', borderRadius: 8 }}>
             Register / Login
           </button>
 
@@ -180,15 +189,6 @@ const RegisterUser = () => {
       </div>
     </div>
   );
-};
-
-const fieldStyle = {
-  width: '100%',
-  padding: '10px',
-  margin: '10px 0',
-  fontSize: '1rem',
-  borderRadius: 6,
-  border: '1px solid #ccc'
 };
 
 export default RegisterUser;
