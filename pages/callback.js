@@ -9,17 +9,14 @@ export default function Callback() {
 
   useEffect(() => {
     const finishLogin = async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+      const { data: { user }, error } = await supabase.auth.getUser();
 
-      if (error || !session || !session.user?.email) {
-        console.error(error);
+      if (error || !user) {
+        console.error('Auth failed or user missing', error);
         return router.replace('/');
       }
 
-      const meta = session.user?.user_metadata || {};
+      const meta = user.user_metadata || {};
 
       if (!meta.username || !meta.mobile || !meta.county_code || !meta.polling_centre_id) {
         console.warn('❌ Missing voter information. Registration failed.');
@@ -31,7 +28,7 @@ export default function Callback() {
       ).toString();
 
       const { error: insertError } = await supabase.from('voter').insert({
-        email: session.user.email,
+        email: user.email,
         username: meta.username,
         mobile: meta.mobile,
         county_code: meta.county_code,
@@ -43,6 +40,7 @@ export default function Callback() {
 
       if (insertError) {
         console.error('Insert failed:', insertError);
+        // Proceed anyway so they can access dashboard
       }
 
       router.replace('/dashboard');
