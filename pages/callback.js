@@ -1,60 +1,61 @@
-// pages/callback.js
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 import sha256 from 'crypto-js/sha256';
 
-const Callback = () => {
+export default function Callback() {
   const router = useRouter();
-  const [status, setStatus] = useState('⏳ Verifying session...');
 
   useEffect(() => {
-    const finishRegistration = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error || !session?.user) {
-        setStatus('❌ Authentication failed.');
+    const finishVerification = async () => {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        console.error('No user found:', authError);
+        router.push('/RegisterUser');
         return;
       }
 
-      const user = session.user;
-      const meta = user.user_metadata;
+      const { email } = user;
 
-      if (!meta || !meta.username || !meta.mobile || !meta.polling_centre_id) {
-        setStatus('❌ Missing voter information. Registration failed.');
+      // Find pending record
+      const { data: voter, error: fetchError } = await supabase
+        .from('voter')
+        .select('*')
+        .eq('email', email)
+        .eq('status', 'pending')
+        .single();
+
+      if (fetchError || !voter) {
+        console.error('No pending voter entry found.');
+        router.push('/RegisterUser');
         return;
       }
 
-      const voter_hash = sha256(`${meta.username}-${meta.polling_centre_id}`).toString();
+      const voter_hash = sha256(`${email}-${voter.username}`).toString();
 
-      const { error: insertError } = await supabase.from('voter').insert({
-        username: meta.username,
-        mobile: meta.mobile,
-        email: user.email,
-        county_code: meta.county_code,
-        subcounty_code: meta.subcounty_code,
-        ward_code: meta.ward_code,
-        polling_centre_id: meta.polling_centre_id,
-        voter_hash,
-      });
+      const { error: updateError } = await supabase
+        .from('voter')
+        .update({
+          status: 'verified',
+          voter_hash,
+        })
+        .eq('id', voter.id);
 
-      if (insertError) {
-        console.error(insertError);
-        setStatus('❌ Could not save voter info.');
+      if (updateError) {
+        console.error('Failed to verify user:', updateError);
+        router.push('/RegisterUser');
         return;
       }
 
-      setStatus('✅ Registration complete. Redirecting...');
-      setTimeout(() => router.push('/dashboard'), 2500);
+      router.push('/dashboard');
     };
 
-    finishRegistration();
-  }, [router]);
+    finishVerification();
+  }, []);
 
-  return (
-    <div style={{ padding: 40, textAlign: 'center' }}>
-      <h2>{status}</h2>
-    </div>
-  );
-};
-
-export default Callback;
+  return <p style={{ padding: 40 }}>⏳ Finalizing verification...</p>;
+}
