@@ -6,67 +6,67 @@ export default function Callback() {
   const router = useRouter();
   const [status, setStatus] = useState('Verifying login...');
 
+  // Simple SHA-256 hashing utility
+  const hashData = async (text) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
   useEffect(() => {
     const verifyUser = async () => {
       try {
-        // Get session from URL token
         const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (error || !session) {
-          setStatus('❌ Failed to verify login.');
+        if (error || !session?.user?.email) {
+          setStatus('❌ Failed to verify session.');
           return;
         }
 
-        const user = session.user;
-        if (!user?.email) {
-          setStatus('❌ Could not retrieve user email.');
-          return;
-        }
-
-        // Get voter details from localStorage (email + location + mobile)
         const saved = localStorage.getItem('pendingVoter');
         if (!saved) {
-          setStatus('⚠️ Missing registration details.');
+          setStatus('⚠️ Missing local voter info.');
           return;
         }
 
-        const voterDetails = JSON.parse(saved);
+        const voter = JSON.parse(saved);
+        const combinedString = `${voter.email}|${voter.mobile}`;
+        const voterHash = await hashData(combinedString);
 
-        // Check if user already exists in 'voters' table
-        const { data: existing, error: fetchError } = await supabase
+        // Check if hashed voter already exists
+        const { data: existing } = await supabase
           .from('voters')
-          .select('*')
-          .eq('email', user.email)
-          .single();
+          .select('id')
+          .eq('voter_hash', voterHash)
+          .maybeSingle();
 
         if (!existing) {
-          // Insert new voter
           const { error: insertError } = await supabase.from('voters').insert([
             {
-              email: voterDetails.email,
-              mobile: voterDetails.mobile,
-              county_code: voterDetails.county_code,
-              subcounty_code: voterDetails.subcounty_code,
-              ward_code: voterDetails.ward_code,
-              polling_centre_id: voterDetails.polling_centre_id,
+              voter_hash: voterHash,
+              county_code: voter.county_code,
+              subcounty_code: voter.subcounty_code,
+              ward_code: voter.ward_code,
+              polling_centre_id: voter.polling_centre_id,
+              registered_at: new Date().toISOString(),
             },
           ]);
 
           if (insertError) {
-            console.error('Insert error:', insertError);
-            setStatus('❌ Failed to save voter record.');
+            console.error(insertError);
+            setStatus('❌ Could not store voter.');
             return;
           }
         }
 
-        // Clean up localStorage
         localStorage.removeItem('pendingVoter');
-
-        setStatus('✅ Login successful! Redirecting...');
+        setStatus('✅ Verified. Redirecting...');
         setTimeout(() => router.push('/dashboard'), 1500);
       } catch (err) {
         console.error('Callback error:', err);
-        setStatus('❌ Unexpected error during login.');
+        setStatus('❌ Unexpected error.');
       }
     };
 
@@ -75,7 +75,7 @@ export default function Callback() {
 
   return (
     <div style={{ padding: 40 }}>
-      <h2>🔐 Authenticating...</h2>
+      <h2>🔐 Processing Login</h2>
       <p>{status}</p>
     </div>
   );
