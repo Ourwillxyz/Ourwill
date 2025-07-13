@@ -1,81 +1,55 @@
 // pages/callback.js
-import { useEffect, useState } from 'react';
-import { supabase } from '../src/supabaseClient';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { supabase } from '../src/supabaseClient';
 import sha256 from 'crypto-js/sha256';
 
 export default function Callback() {
-  const [message, setMessage] = useState('🔄 Verifying login...');
   const router = useRouter();
 
   useEffect(() => {
-    const processRegistration = async (user) => {
-      const meta = JSON.parse(localStorage.getItem('pending_registration') || '{}');
+    const finishLogin = async () => {
       const {
-        email,
-        username,
-        mobile,
-        county_code,
-        subcounty_code,
-        ward_code,
-        polling_centre_id,
-      } = meta;
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
 
-      if (!username || !mobile || !county_code || !subcounty_code || !ward_code || !polling_centre_id) {
-        setMessage('❌ Missing voter information. Registration failed.');
-        return;
+      if (error || !session || !session.user?.email) {
+        console.error(error);
+        return router.replace('/');
       }
 
-      const voter_hash = sha256(`${username}-${mobile}`).toString();
+      const meta = session.user?.user_metadata || {};
+
+      if (!meta.username || !meta.mobile || !meta.county_code || !meta.polling_centre_id) {
+        console.warn('❌ Missing voter information. Registration failed.');
+        return router.replace('/');
+      }
+
+      const voterHash = sha256(
+        meta.username + meta.mobile + meta.county_code + meta.polling_centre_id
+      ).toString();
 
       const { error: insertError } = await supabase.from('voter').insert({
-        username,
-        mobile,
-        county_code,
-        subcounty_code,
-        ward_code,
-        polling_centre_id,
-        voter_hash,
+        email: session.user.email,
+        username: meta.username,
+        mobile: meta.mobile,
+        county_code: meta.county_code,
+        subcounty_code: meta.subcounty_code,
+        ward_code: meta.ward_code,
+        polling_centre_id: meta.polling_centre_id,
+        voter_hash: voterHash,
       });
 
       if (insertError) {
-        console.error('Insert error:', insertError);
-        setMessage('❌ Could not save voter info. It may already exist.');
-        return;
+        console.error('Insert failed:', insertError);
       }
 
-      localStorage.removeItem('pending_registration');
-      setMessage('✅ Registration complete! Redirecting to dashboard...');
-      setTimeout(() => router.push('/dashboard'), 2000);
+      router.replace('/dashboard');
     };
 
-    // Wait for auth state change
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setMessage('✅ Login successful! Saving your voter info...');
-        await processRegistration(session.user);
-      }
-    });
+    finishLogin();
+  }, [router]);
 
-    // Also try once directly
-    const tryImmediateUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (data?.user) {
-        setMessage('✅ Login detected! Saving your voter info...');
-        await processRegistration(data.user);
-      }
-    };
-
-    tryImmediateUser();
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  return (
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
-      <h2>{message}</h2>
-    </div>
-  );
+  return <p>Finalizing login, please wait...</p>;
 }
