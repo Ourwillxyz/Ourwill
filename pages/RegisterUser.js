@@ -1,52 +1,61 @@
 // pages/RegisterUser.js
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../src/supabaseClient';
 
-export default function RegisterUser() {
-  const [email, setEmail] = useState('');
-  const [info, setInfo] = useState('');
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setInfo('Sending magic link...');
-
-    try {
-      const res = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setInfo('✅ Magic link sent! Please check your email.');
-      } else {
-        setInfo(`❌ ${data.message || 'Failed to send magic link.'}`);
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      setInfo('❌ Unexpected error. Please try again.');
-    }
-  };
-
-  return (
-    <div style={{ maxWidth: 400, margin: '3rem auto', textAlign: 'center' }}>
-      <h2>Register or Login via Email</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ padding: 10, width: '90%', margin: '1rem 0' }}
-        />
-        <br />
-        <button type="submit" style={{ padding: '10px 20px' }}>
-          Send Magic Link
-        </button>
-      </form>
-      {info && <p style={{ marginTop: '1rem' }}>{info}</p>}
-    </div>
-  );
+function generateOtp() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }
+
+const RegisterUser = () => {
+  const [counties, setCounties] = useState([]);
+  const [subcounties, setSubcounties] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [pollingCentres, setPollingCentres] = useState([]);
+
+  const [selectedCounty, setSelectedCounty] = useState('');
+  const [selectedSubcounty, setSelectedSubcounty] = useState('');
+  const [selectedWard, setSelectedWard] = useState('');
+  const [selectedPollingCentre, setSelectedPollingCentre] = useState('');
+
+  const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [inputOtp, setInputOtp] = useState('');
+  const [step, setStep] = useState(1);
+  const [info, setInfo] = useState('');
+  const [verified, setVerified] = useState(false);
+
+  useEffect(() => {
+    const fetchCounties = async () => {
+      const { data, error } = await supabase.from('counties').select('*').order('name');
+      if (!error) setCounties(data);
+    };
+    fetchCounties();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedCounty) return;
+    const fetch = async () => {
+      const { data } = await supabase.from('subcounties').select('*').eq('county_code', selectedCounty).order('name');
+      setSubcounties(data || []);
+      setSelectedSubcounty('');
+      setWards([]);
+      setPollingCentres([]);
+    };
+    fetch();
+  }, [selectedCounty]);
+
+  useEffect(() => {
+    if (!selectedSubcounty) return;
+    const fetch = async () => {
+      const { data } = await supabase.from('wards').select('*').eq('subcounty_code', selectedSubcounty).order('name');
+      setWards(data || []);
+      setSelectedWard('');
+      setPollingCentres([]);
+    };
+    fetch();
+  }, [selectedSubcounty]);
+
+  useEffect(() => {
+    if (!selectedWard) return;
+    const fetch = async () => {
