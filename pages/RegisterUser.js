@@ -117,80 +117,55 @@ const RegisterUser = () => {
   };
 
   return (
-    <div
-      style={{
-        backgroundImage: 'url(/kenya-flag.jpg)',
-        backgroundSize: 'cover',
-        minHeight: '100vh',
-        padding: 24,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    >
-      <div style={{
-        background: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: 12,
-        padding: 32,
-        maxWidth: 500,
-        width: '100%',
-        textAlign: 'center',
-      }}>
-        <Image src={logo} alt="OurWill Logo" width={140} priority />
-        <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            style={{ width: '90%', padding: 10, margin: '10px 0' }}
-          />
-          <input
-            type="email"
-            placeholder="Email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: '90%', padding: 10, margin: '10px 0' }}
-          />
-          <input
-            type="tel"
-            placeholder="Mobile e.g. 712345678"
-            value={mobile}
-            onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))}
-            maxLength={9}
-            required
-            style={{ width: '90%', padding: 10, margin: '10px 0' }}
-          />
-
-          <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-            <option value="">-- Select County --</option>
-            {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-          </select>
-
-          <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-            <option value="">-- Select Subcounty --</option>
-            {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
-          </select>
-
-          <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-            <option value="">-- Select Ward --</option>
-            {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
-          </select>
-
-          <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-            <option value="">-- Select Polling Centre --</option>
-            {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-
-          <button type="submit" style={{ marginTop: 16, padding: '10px 20px' }}>
-            Register / Login
-          </button>
-
-          {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
-        </form>
-      </div>
+    <div style={{ maxWidth: 500, margin: '2rem auto', padding: 24, textAlign: 'center', border: '1px solid #eee', borderRadius: 12 }}>
+      <Image src={logo} alt="OurWill Logo" width={120} />
+      <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+          style={{ width: '90%', padding: 10, margin: '10px 0' }}
+        />
+        <input
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          style={{ width: '90%', padding: 10, margin: '10px 0' }}
+        />
+        <input
+          type="tel"
+          placeholder="Mobile e.g. 712345678"
+          value={mobile}
+          onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))}
+          maxLength={9}
+          required
+          style={{ width: '90%', padding: 10, margin: '10px 0' }}
+        />
+        <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
+          <option value="">-- Select County --</option>
+          {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+        </select>
+        <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
+          <option value="">-- Select Subcounty --</option>
+          {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+        </select>
+        <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
+          <option value="">-- Select Ward --</option>
+          {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
+        </select>
+        <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
+          <option value="">-- Select Polling Centre --</option>
+          {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <button type="submit" style={{ marginTop: 16, padding: '10px 20px' }}>
+          Register / Login
+        </button>
+        {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
+      </form>
     </div>
   );
 };
