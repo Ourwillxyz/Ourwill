@@ -1,4 +1,3 @@
-// pages/callback.js
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
@@ -8,46 +7,62 @@ export default function Callback() {
   const router = useRouter();
 
   useEffect(() => {
-    const finishLogin = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
+    const completeRegistration = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (error || !user) {
-        console.error('Auth failed or user missing', error);
-        return router.replace('/');
+      if (!session?.user?.email) {
+        console.log('❌ No Supabase session found. Redirecting...');
+        return router.push('/RegisterUser');
       }
 
-      const meta = user.user_metadata || {};
+      const email = session.user.email;
+      const pending = localStorage.getItem('pending_registration');
 
-      if (!meta.username || !meta.mobile || !meta.county_code || !meta.polling_centre_id) {
-        console.warn('❌ Missing voter information. Registration failed.');
-        return router.replace('/');
+      if (!pending) {
+        console.log('❌ No pending voter data. Redirecting...');
+        return router.push('/RegisterUser');
       }
 
-      const voterHash = sha256(
-        meta.username + meta.mobile + meta.county_code + meta.polling_centre_id
-      ).toString();
+      const voterData = JSON.parse(pending);
+      const {
+        username,
+        mobile,
+        county_code,
+        subcounty_code,
+        ward_code,
+        polling_centre_id,
+      } = voterData;
 
-      const { error: insertError } = await supabase.from('voter').insert({
-        email: user.email,
-        username: meta.username,
-        mobile: meta.mobile,
-        county_code: meta.county_code,
-        subcounty_code: meta.subcounty_code,
-        ward_code: meta.ward_code,
-        polling_centre_id: meta.polling_centre_id,
-        voter_hash: voterHash,
-      });
+      const voter_hash = sha256(email + username + mobile).toString();
 
-      if (insertError) {
-        console.error('Insert failed:', insertError);
-        // Proceed anyway so they can access dashboard
+      const { error } = await supabase.from('voter').insert([
+        {
+          email,
+          username,
+          mobile,
+          county: county_code,
+          subcounty: subcounty_code,
+          ward: ward_code,
+          polling_centre: polling_centre_id,
+          voter_hash,
+        },
+      ]);
+
+      if (error) {
+        console.error('❌ Voter insert failed:', error);
+        alert('Registration failed. Please try again.');
+        return router.push('/RegisterUser');
       }
 
-      router.replace('/dashboard');
+      localStorage.removeItem('pending_registration');
+      console.log('✅ Voter registered. Redirecting to dashboard.');
+      router.push('/dashboard');
     };
 
-    finishLogin();
+    completeRegistration();
   }, [router]);
 
-  return <p>Finalizing login, please wait...</p>;
+  return <p style={{ padding: 20 }}>Completing registration...</p>;
 }
