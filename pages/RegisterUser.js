@@ -22,8 +22,8 @@ const RegisterUser = () => {
 
   useEffect(() => {
     const fetchCounties = async () => {
-      const { data, error } = await supabase.from('counties').select('*').order('name');
-      if (!error) setCounties(data);
+      const { data } = await supabase.from('counties').select('*').order('name');
+      if (data) setCounties(data);
     };
     fetchCounties();
   }, []);
@@ -31,12 +31,12 @@ const RegisterUser = () => {
   useEffect(() => {
     const fetchSubcounties = async () => {
       if (!selectedCounty) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('subcounties')
         .select('*')
         .eq('county_code', selectedCounty)
         .order('name');
-      if (!error) setSubcounties(data);
+      if (data) setSubcounties(data);
     };
     setSelectedSubcounty('');
     setSelectedWard('');
@@ -50,12 +50,12 @@ const RegisterUser = () => {
   useEffect(() => {
     const fetchWards = async () => {
       if (!selectedSubcounty) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('wards')
         .select('*')
         .eq('subcounty_code', selectedSubcounty)
         .order('name');
-      if (!error) setWards(data);
+      if (data) setWards(data);
     };
     setSelectedWard('');
     setSelectedPollingCentre('');
@@ -67,12 +67,12 @@ const RegisterUser = () => {
   useEffect(() => {
     const fetchPolling = async () => {
       if (!selectedWard) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('polling_centres')
         .select('*')
         .eq('ward_code', selectedWard)
         .order('name');
-      if (!error) setPollingCentres(data);
+      if (data) setPollingCentres(data);
     };
     setSelectedPollingCentre('');
     setPollingCentres([]);
@@ -105,7 +105,7 @@ const RegisterUser = () => {
       return setInfo('❌ Failed to send login link. Try again.');
     }
 
-    // Store metadata in localStorage for callback usage
+    // Store metadata in localStorage
     localStorage.setItem('pending_registration', JSON.stringify({
       email,
       username,
@@ -120,66 +120,75 @@ const RegisterUser = () => {
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: '2rem auto', padding: 24, textAlign: 'center', border: '1px solid #eee', borderRadius: 12 }}>
-      <Image src={logo} alt="OurWill Logo" width={120} />
-      <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-          style={{ width: '90%', padding: 10, margin: '10px 0' }}
-        />
-        <br />
-        <input
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ width: '90%', padding: 10, margin: '10px 0' }}
-        />
-        <br />
-        <input
-          type="tel"
-          placeholder="Mobile e.g. 712345678"
-          value={mobile}
-          onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))}
-          maxLength={9}
-          required
-          style={{ width: '90%', padding: 10, margin: '10px 0' }}
-        />
-        <br />
+    <div style={{
+      background: 'linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)), url("https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1920px-Flag_of_Kenya.svg.png") center / cover',
+      minHeight: '100vh',
+      paddingTop: '3rem'
+    }}>
+      <div style={{
+        maxWidth: 520,
+        margin: 'auto',
+        padding: 24,
+        textAlign: 'center',
+        background: 'white',
+        borderRadius: 12,
+        boxShadow: '0 0 10px rgba(0,0,0,0.1)'
+      }}>
+        <Image src={logo} alt="OurWill Logo" width={140} style={{ marginBottom: 16 }} />
+        <form onSubmit={handleRegister} style={{ marginTop: 8 }}>
+          <input type="text" placeholder="Username" value={username}
+            onChange={(e) => setUsername(e.target.value)} required
+            style={fieldStyle} />
 
-        <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-          <option value="">-- Select County --</option>
-          {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-        </select>
+          <input type="email" placeholder="Email address" value={email}
+            onChange={(e) => setEmail(e.target.value)} required
+            style={fieldStyle} />
 
-        <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-          <option value="">-- Select Subcounty --</option>
-          {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
-        </select>
+          <input type="tel" placeholder="Mobile e.g. 712345678" value={mobile}
+            onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))}
+            maxLength={9} required style={fieldStyle} />
 
-        <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-          <option value="">-- Select Ward --</option>
-          {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
-        </select>
+          <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={fieldStyle}>
+            <option value="">-- Select County --</option>
+            {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </select>
 
-        <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
-          <option value="">-- Select Polling Centre --</option>
-          {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+          <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={fieldStyle}>
+            <option value="">-- Select Subcounty --</option>
+            {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+          </select>
 
-        <button type="submit" style={{ marginTop: 16, padding: '10px 20px' }}>
-          Register / Login
-        </button>
+          <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={fieldStyle}>
+            <option value="">-- Select Ward --</option>
+            {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
+          </select>
 
-        {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
-      </form>
+          <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={fieldStyle}>
+            <option value="">-- Select Polling Centre --</option>
+            {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+
+          <button type="submit" style={{
+            width: '100%', padding: '12px 0', marginTop: 16, backgroundColor: '#006400',
+            color: 'white', fontWeight: 'bold', border: 'none', borderRadius: 6, cursor: 'pointer'
+          }}>
+            Register / Login
+          </button>
+
+          {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
+        </form>
+      </div>
     </div>
   );
+};
+
+const fieldStyle = {
+  width: '100%',
+  padding: '10px',
+  margin: '10px 0',
+  fontSize: '1rem',
+  borderRadius: 6,
+  border: '1px solid #ccc'
 };
 
 export default RegisterUser;
