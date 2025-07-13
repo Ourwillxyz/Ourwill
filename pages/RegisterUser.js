@@ -1,3 +1,4 @@
+// pages/RegisterUser.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../src/supabaseClient';
 import Image from 'next/image';
@@ -89,12 +90,21 @@ const RegisterUser = () => {
     }
 
     const formattedMobile = `254${mobile}`;
+
     setInfo('⏳ Sending login link to your email...');
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/callback`,
+        data: {
+          username,
+          mobile: formattedMobile,
+          county_code: selectedCounty,
+          subcounty_code: selectedSubcounty,
+          ward_code: selectedWard,
+          polling_centre_id: selectedPollingCentre,
+        },
       },
     });
 
@@ -103,36 +113,30 @@ const RegisterUser = () => {
       return setInfo('❌ Failed to send login link. Try again.');
     }
 
-    localStorage.setItem('pending_registration', JSON.stringify({
-      email,
-      username,
-      mobile: formattedMobile,
-      county_code: selectedCounty,
-      subcounty_code: selectedSubcounty,
-      ward_code: selectedWard,
-      polling_centre_id: selectedPollingCentre,
-    }));
-
     setInfo('✅ Check your email for the login link.');
   };
 
   return (
-    <div style={{
-      background: 'linear-gradient(rgba(255,255,255,0.75), rgba(255,255,255,0.75)), url("https://upload.wikimedia.org/wikipedia/commons/4/49/Flag_of_Kenya.svg") center / cover no-repeat',
-      backgroundAttachment: 'fixed',
-      minHeight: '100vh',
-      paddingTop: '3rem'
-    }}>
+    <div
+      style={{
+        backgroundImage: 'url(/kenya-flag.jpg)',
+        backgroundSize: 'cover',
+        minHeight: '100vh',
+        padding: 24,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
       <div style={{
-        maxWidth: 520,
-        margin: '0 auto',
-        padding: '2rem',
+        background: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 12,
+        padding: 32,
+        maxWidth: 500,
+        width: '100%',
         textAlign: 'center',
-        backgroundColor: 'white',
-        borderRadius: '1rem',
-        boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
       }}>
-        <Image src={logo} alt="OurWill Logo" width={160} />
+        <Image src={logo} alt="OurWill Logo" width={140} priority />
         <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
           <input
             type="text"
@@ -180,7 +184,7 @@ const RegisterUser = () => {
             {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
 
-          <button type="submit" style={{ marginTop: 16, padding: '10px 20px', backgroundColor: '#0B5ED7', color: '#fff', border: 'none', borderRadius: 8 }}>
+          <button type="submit" style={{ marginTop: 16, padding: '10px 20px' }}>
             Register / Login
           </button>
 
