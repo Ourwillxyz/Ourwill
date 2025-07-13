@@ -1,25 +1,20 @@
-import React, { useState } from "react";
+// src/components/OtpEntryForm.js
+import { useState } from 'react';
 
-const OtpEntryForm = ({ email, onVerified }) => {
-  const [otp, setOtp] = useState("");
-  const [message, setMessage] = useState("");
+const OtpEntryForm = ({ onVerify }) => {
+  const [otp, setOtp] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setMessage("");
-    // Call your verify endpoint
-    const res = await fetch("/api/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setMessage("OTP verified!");
-      if (onVerified) onVerified();
-    } else {
-      setMessage(data.message || "Verification failed.");
+
+    if (otp.length !== 4) {
+      setError('OTP must be 4 digits');
+      return;
     }
+
+    setError('');
+    onVerify(otp);
   };
 
   return (
@@ -30,10 +25,13 @@ const OtpEntryForm = ({ email, onVerified }) => {
           type="text"
           value={otp}
           onChange={(e) => setOtp(e.target.value)}
+          maxLength={4}
+          required
         />
       </label>
-      <button type="submit">Verify OTP</button>
-      {message && <div>{message}</div>}
+      <br />
+      <button type="submit">Verify</button>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
     </form>
   );
 };
