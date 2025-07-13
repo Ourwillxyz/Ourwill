@@ -102,7 +102,7 @@ export default function RegisterUser() {
       return;
     }
 
-    // Save info temporarily to localStorage
+    // Save user details to localStorage before redirect
     const payload = {
       email,
       mobile,
@@ -114,7 +114,6 @@ export default function RegisterUser() {
 
     localStorage.setItem('pendingVoter', JSON.stringify(payload));
 
-    // Send magic link
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -123,8 +122,8 @@ export default function RegisterUser() {
     });
 
     if (error) {
-      console.error('Magic link error:', error);
-      setMessage('❌ Failed to send verification email. Try again.');
+      console.error('Magic link error:', error.message);
+      setMessage('❌ Failed to send magic link. Please try again.');
     } else {
       setMessage('✅ Magic link sent! Please check your email.');
     }
@@ -156,4 +155,73 @@ export default function RegisterUser() {
         <br />
         <label>
           Subcounty:
-          <select value={select
+          <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required>
+            <option value="">--Select--</option>
+            {subcounties.map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <br />
+        <label>
+          Ward:
+          <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required>
+            <option value="">--Select--</option>
+            {wards.map((w) => (
+              <option key={w.code} value={w.code}>
+                {w.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <br />
+        <label>
+          Polling Centre:
+          <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required>
+            <option value="">--Select--</option>
+            {pollingCentres.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <br />
+        <label>
+          Email Address:
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="e.g. voter@example.com"
+            required
+          />
+        </label>
+        <br />
+        <label>
+          Mobile Number:
+          <input
+            type="text"
+            value={mobile}
+            onChange={(e) => setMobile(e.target.value)}
+            placeholder="e.g. 2547XXXXXXXXX"
+            required
+          />
+        </label>
+        <br />
+        <button type="submit" style={{ padding: '8px 16px', marginTop: 10 }}>
+          Register & Send Magic Link
+        </button>
+      </form>
+      {message && <p style={{ marginTop: 10 }}>{message}</p>}
+      <p style={{ marginTop: 20 }}>
+        Already registered?{' '}
+        <a href="#" onClick={() => router.push('/')}>
+          Go to Home
+        </a>
+      </p>
+    </div>
+  );
+}
