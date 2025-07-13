@@ -5,20 +5,12 @@ import { useRouter } from 'next/router';
 import sha256 from 'crypto-js/sha256';
 
 export default function Callback() {
-  const [message, setMessage] = useState('🔄 Verifying...');
+  const [message, setMessage] = useState('🔄 Verifying login...');
   const router = useRouter();
 
   useEffect(() => {
-    const verifyUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-
-      if (error || !user) {
-        setMessage('❌ Authentication failed. Try again.');
-        return;
-      }
-
+    const processRegistration = async (user) => {
       const meta = JSON.parse(localStorage.getItem('pending_registration') || '{}');
-
       const {
         email,
         username,
@@ -57,7 +49,28 @@ export default function Callback() {
       setTimeout(() => router.push('/dashboard'), 2000);
     };
 
-    verifyUser();
+    // Wait for auth state change
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setMessage('✅ Login successful! Saving your voter info...');
+        await processRegistration(session.user);
+      }
+    });
+
+    // Also try once directly
+    const tryImmediateUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (data?.user) {
+        setMessage('✅ Login detected! Saving your voter info...');
+        await processRegistration(data.user);
+      }
+    };
+
+    tryImmediateUser();
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   return (
