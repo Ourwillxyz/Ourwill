@@ -10,33 +10,25 @@ export default function Callback() {
   useEffect(() => {
     const verifyUser = async () => {
       try {
-        // Step 1: Get session
+        // Step 1: Get auth session or fallback
         let {
           data: { session },
           error: sessionError
         } = await supabase.auth.getSession();
 
-        if (sessionError || !session?.user?.email) {
-          // Try fallback method
-          console.log("No session found, trying getUser fallback");
-          const {
-            data: { user },
-            error: userError
-          } = await supabase.auth.getUser();
-
-          if (userError || !user?.email) {
-            console.error("Auth failed:", sessionError || userError);
-            setMessage('❌ Authentication failed. Please try again.');
+        if (!session?.user?.email) {
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          if (!user?.email) {
+            setMessage('❌ Could not authenticate user.');
             return;
           }
-
           session = { user };
         }
 
-        const userEmail = session.user.email.toLowerCase(); // normalize casing
-        console.log("Authenticated user email:", userEmail);
+        const userEmail = session.user.email.toLowerCase();
+        console.log("Verified email:", userEmail);
 
-        // Step 2: Find voter by email (case-insensitive)
+        // Step 2: Fetch voter by email (case-insensitive)
         const { data: voter, error: voterError } = await supabase
           .from('voter')
           .select('*')
@@ -44,14 +36,14 @@ export default function Callback() {
           .single();
 
         if (voterError || !voter) {
-          console.error("Voter lookup failed:", voterError);
+          console.error("Voter not found:", voterError);
           setMessage('❌ Voter record not found.');
           return;
         }
 
-        const { county, subcounty, ward, polling_centre } = voter;
+        const { id, county, subcounty, ward, polling_centre } = voter;
 
-        // Step 3: Resolve human-readable names
+        // Step 3: Resolve location names
         const [{ data: c }, { data: sc }, { data: w }, { data: pc }] = await Promise.all([
           supabase.from('counties').select('name').eq('code', county).maybeSingle(),
           supabase.from('subcounties').select('name').eq('code', subcounty).maybeSingle(),
@@ -66,7 +58,7 @@ export default function Callback() {
 
         console.log("Resolved names:", { county_name, subcounty_name, ward_name, polling_centre_name });
 
-        // Step 4: Update voter record
+        // Step 4: Update that exact voter using their unique ID
         const { error: updateError } = await supabase
           .from('voter')
           .update({
@@ -76,16 +68,16 @@ export default function Callback() {
             ward_name,
             polling_centre_name,
           })
-          .ilike('email', userEmail);
+          .eq('id', id); // Use unique ID for update
 
         if (updateError) {
           console.error("Update failed:", updateError);
-          setMessage('❌ Failed to update voter info.');
+          setMessage('❌ Failed to update voter.');
           return;
         }
 
         localStorage.removeItem('pending_registration');
-        setMessage('✅ Verified and updated! Redirecting...');
+        setMessage('✅ Verified and updated. Redirecting...');
         setTimeout(() => router.push('/dashboard'), 2000);
       } catch (err) {
         console.error("Unexpected error:", err);
