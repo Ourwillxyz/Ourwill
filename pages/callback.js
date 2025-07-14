@@ -22,11 +22,11 @@ export default function Callback() {
         return;
       }
 
-      // 1. Find the matching voter
+      // 1. Find the matching voter with case-insensitive email
       const { data: voter, error: voterError } = await supabase
         .from('voter')
         .select('*')
-        .eq('email', userEmail)
+        .ilike('email', userEmail) // CASE-INSENSITIVE MATCH
         .single();
 
       if (voterError || !voter) {
@@ -36,7 +36,7 @@ export default function Callback() {
 
       const { county, subcounty, ward, polling_centre } = voter;
 
-      // 2. Fetch names based on codes
+      // 2. Fetch readable names
       const [{ data: c }, { data: sc }, { data: w }, { data: pc }] = await Promise.all([
         supabase.from('counties').select('name').eq('code', county).maybeSingle(),
         supabase.from('subcounties').select('name').eq('code', subcounty).maybeSingle(),
@@ -49,7 +49,7 @@ export default function Callback() {
       const ward_name = w?.name || '';
       const polling_centre_name = pc?.name || '';
 
-      // 3. Update the voter with readable names and verified status
+      // 3. Update the voter record with readable names + verified status
       const { error: updateError } = await supabase
         .from('voter')
         .update({
@@ -59,11 +59,11 @@ export default function Callback() {
           ward_name,
           polling_centre_name,
         })
-        .eq('email', userEmail);
+        .ilike('email', userEmail); // again case-insensitive
 
       if (updateError) {
         console.error(updateError);
-        setMessage('❌ Failed to update voter location names.');
+        setMessage('❌ Failed to update voter info.');
         return;
       }
 
