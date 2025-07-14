@@ -2,33 +2,30 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
+import sha256 from 'crypto-js/sha256';
 
 export default function Callback() {
-  const [message, setMessage] = useState('Verifying your login...');
+  const [message, setMessage] = useState('Verifying...');
   const router = useRouter();
 
   useEffect(() => {
     const verifyUser = async () => {
       try {
-        // Step 1: Get auth session or fallback
-        let {
-          data: { session },
-          error: sessionError
-        } = await supabase.auth.getSession();
-
+        // Get session or fallback to getUser
+        let { data: { session }, error } = await supabase.auth.getSession();
         if (!session?.user?.email) {
           const { data: { user }, error: userError } = await supabase.auth.getUser();
           if (!user?.email) {
-            setMessage('❌ Could not authenticate user.');
+            console.error("Auth failed:", error || userError);
+            setMessage("❌ Could not verify email.");
             return;
           }
           session = { user };
         }
 
         const userEmail = session.user.email.toLowerCase();
-        console.log("Verified email:", userEmail);
 
-        // Step 2: Fetch voter by email (case-insensitive)
+        // Find voter by email (before deletion)
         const { data: voter, error: voterError } = await supabase
           .from('voter')
           .select('*')
@@ -37,13 +34,16 @@ export default function Callback() {
 
         if (voterError || !voter) {
           console.error("Voter not found:", voterError);
-          setMessage('❌ Voter record not found.');
+          setMessage("❌ Voter record not found.");
           return;
         }
 
-        const { id, county, subcounty, ward, polling_centre } = voter;
+        const { id, username, mobile, county, subcounty, ward, polling_centre } = voter;
 
-        // Step 3: Resolve location names
+        // Hash identity
+        const voterHash = sha256(`${userEmail}:${mobile}:${username}`).toString();
+
+        // Fetch location names
         const [{ data: c }, { data: sc }, { data: w }, { data: pc }] = await Promise.all([
           supabase.from('counties').select('name').eq('code', county).maybeSingle(),
           supabase.from('subcounties').select('name').eq('code', subcounty).maybeSingle(),
@@ -51,37 +51,34 @@ export default function Callback() {
           supabase.from('polling_centres').select('name').eq('id', polling_centre).maybeSingle(),
         ]);
 
-        const county_name = c?.name || '';
-        const subcounty_name = sc?.name || '';
-        const ward_name = w?.name || '';
-        const polling_centre_name = pc?.name || '';
+        const updatePayload = {
+          voter_hash: voterHash,
+          status: 'verified',
+          email: null,
+          mobile: null,
+          county_name: c?.name || '',
+          subcounty_name: sc?.name || '',
+          ward_name: w?.name || '',
+          polling_centre_name: pc?.name || '',
+        };
 
-        console.log("Resolved names:", { county_name, subcounty_name, ward_name, polling_centre_name });
-
-        // Step 4: Update that exact voter using their unique ID
         const { error: updateError } = await supabase
           .from('voter')
-          .update({
-            status: 'verified',
-            county_name,
-            subcounty_name,
-            ward_name,
-            polling_centre_name,
-          })
-          .eq('id', id); // Use unique ID for update
+          .update(updatePayload)
+          .eq('id', id);
 
         if (updateError) {
-          console.error("Update failed:", updateError);
-          setMessage('❌ Failed to update voter.');
+          console.error("Update error:", updateError);
+          setMessage("❌ Could not update voter record.");
           return;
         }
 
         localStorage.removeItem('pending_registration');
-        setMessage('✅ Verified and updated. Redirecting...');
+        setMessage("✅ Registration complete. Redirecting...");
         setTimeout(() => router.push('/dashboard'), 2000);
       } catch (err) {
         console.error("Unexpected error:", err);
-        setMessage('❌ Unexpected error occurred.');
+        setMessage("❌ Unexpected error occurred.");
       }
     };
 
