@@ -20,12 +20,13 @@ export default function Verify() {
 
     setInfo('⏳ Verifying OTP...');
 
-    // 1. Check OTP match and expiry
+    // 1. Look up OTP record
     const { data: otpRecord, error: otpError } = await supabase
       .from('otp_verification')
       .select('*')
       .eq('email', email)
       .eq('otp', otpInput)
+      .eq('used', false)
       .gte('expires_at', new Date().toISOString())
       .maybeSingle();
 
@@ -33,7 +34,7 @@ export default function Verify() {
       return setInfo('❌ Invalid or expired OTP.');
     }
 
-    // 2. Prevent duplicate registration
+    // 2. Prevent duplicates
     const { data: existing } = await supabase
       .from('voter')
       .select('id')
@@ -44,7 +45,7 @@ export default function Verify() {
       return setInfo('❌ Already registered.');
     }
 
-    // 3. Create hashed voter identity
+    // 3. Hash voter ID
     const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
 
     const { error: insertError } = await supabase.from('voter').insert([{
@@ -64,10 +65,15 @@ export default function Verify() {
       return setInfo('❌ Could not save voter data.');
     }
 
-    // 4. Cleanup
-    await supabase.from('otp_verification').delete().eq('email', email);
-    localStorage.removeItem('pending_registration');
+    // 4. Mark OTP as used
+    await supabase
+      .from('otp_verification')
+      .update({ used: true })
+      .eq('email', email)
+      .eq('otp', otpInput);
 
+    // 5. Clean up and redirect
+    localStorage.removeItem('pending_registration');
     setInfo('✅ Verified and registered! Redirecting...');
     setTimeout(() => router.push('/dashboard'), 2000);
   };
