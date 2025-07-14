@@ -20,25 +20,22 @@ const RegisterUser = () => {
   const [mobile, setMobile] = useState('');
   const [info, setInfo] = useState('');
 
-  // Fetch counties
   useEffect(() => {
     const fetchCounties = async () => {
-      const { data, error } = await supabase.from('counties').select('*').order('name');
-      if (!error) setCounties(data);
+      const { data } = await supabase.from('counties').select('*').order('name');
+      setCounties(data || []);
     };
     fetchCounties();
   }, []);
 
-  // Fetch subcounties
   useEffect(() => {
     const fetchSubcounties = async () => {
-      if (!selectedCounty) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('subcounties')
         .select('*')
         .eq('county_code', selectedCounty)
         .order('name');
-      if (!error) setSubcounties(data);
+      setSubcounties(data || []);
     };
     setSelectedSubcounty('');
     setSelectedWard('');
@@ -49,16 +46,14 @@ const RegisterUser = () => {
     if (selectedCounty) fetchSubcounties();
   }, [selectedCounty]);
 
-  // Fetch wards
   useEffect(() => {
     const fetchWards = async () => {
-      if (!selectedSubcounty) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('wards')
         .select('*')
         .eq('subcounty_code', selectedSubcounty)
         .order('name');
-      if (!error) setWards(data);
+      setWards(data || []);
     };
     setSelectedWard('');
     setSelectedPollingCentre('');
@@ -67,23 +62,20 @@ const RegisterUser = () => {
     if (selectedSubcounty) fetchWards();
   }, [selectedSubcounty]);
 
-  // Fetch polling centres
   useEffect(() => {
     const fetchPolling = async () => {
-      if (!selectedWard) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('polling_centres')
         .select('*')
         .eq('ward_code', selectedWard)
         .order('name');
-      if (!error) setPollingCentres(data);
+      setPollingCentres(data || []);
     };
     setSelectedPollingCentre('');
     setPollingCentres([]);
     if (selectedWard) fetchPolling();
   }, [selectedWard]);
 
-  // Check uniqueness before triggering OTP
   const checkUniqueness = async () => {
     const { data, error } = await supabase
       .from('voter')
@@ -111,7 +103,6 @@ const RegisterUser = () => {
 
     setInfo('⏳ Saving your details...');
 
-    // ✅ INSERT into Supabase voter table with status 'pending'
     const { error: insertError } = await supabase.from('voter').insert([
       {
         email,
@@ -120,31 +111,31 @@ const RegisterUser = () => {
         county_code: selectedCounty,
         subcounty_code: selectedSubcounty,
         ward_code: selectedWard,
-        polling_centre_id: selectedPollingCentre,
-        status: 'pending',
+        polling_centre: selectedPollingCentre, // ✅ Your actual column name
+        status: 'pending',                      // ✅ Marked pending
       }
     ]);
 
     if (insertError) {
-      console.error(insertError);
-      return setInfo('❌ Failed to save registration data.');
+      console.error('Insert Error:', insertError.message);
+      return setInfo(`❌ Save error: ${insertError.message}`);
     }
 
-    setInfo('⏳ Sending login link to your email...');
+    setInfo('⏳ Sending login link...');
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/callback`,
       },
     });
 
-    if (error) {
-      console.error(error);
-      return setInfo('❌ Failed to send login link. Try again.');
+    if (otpError) {
+      console.error('OTP Error:', otpError.message);
+      return setInfo('❌ Failed to send login link.');
     }
 
-    setInfo('✅ Registration saved. Check your email for the login link.');
+    setInfo('✅ Registration saved. Check your email to log in.');
   };
 
   return (
@@ -192,26 +183,46 @@ const RegisterUser = () => {
           required
           style={{ width: '90%', padding: 10, margin: '10px 0' }}
         />
+
         <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select County --</option>
-          {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          {counties.map((c) => (
+            <option key={c.code} value={c.code}>{c.name}</option>
+          ))}
         </select>
+
         <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select Subcounty --</option>
-          {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+          {subcounties.map((s) => (
+            <option key={s.code} value={s.code}>{s.name}</option>
+          ))}
         </select>
+
         <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select Ward --</option>
-          {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
+          {wards.map((w) => (
+            <option key={w.code} value={w.code}>{w.name}</option>
+          ))}
         </select>
+
         <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select Polling Centre --</option>
-          {pollingCentres.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {pollingCentres.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
         </select>
+
         <button type="submit" style={{ marginTop: 16, padding: '10px 20px', fontWeight: 'bold' }}>
           Register / Login
         </button>
-        {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
+        {info && (
+          <p style={{
+            marginTop: 20,
+            color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333',
+          }}>
+            {info}
+          </p>
+        )}
       </form>
     </div>
   );
