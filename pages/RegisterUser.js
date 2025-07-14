@@ -108,11 +108,11 @@ const RegisterUser = () => {
         email,
         username,
         mobile: formattedMobile,
-        county_code: selectedCounty,
-        subcounty_code: selectedSubcounty,
-        ward_code: selectedWard,
-        polling_centre: selectedPollingCentre, // ✅ Your actual column name
-        status: 'pending',                      // ✅ Marked pending
+        county: selectedCounty,
+        subcounty: selectedSubcounty,
+        ward: selectedWard,
+        polling_centre: selectedPollingCentre,
+        status: 'pending',
       }
     ]);
 
