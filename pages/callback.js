@@ -5,61 +5,54 @@ import { supabase } from '../src/supabaseClient';
 import sha256 from 'crypto-js/sha256';
 
 export default function Callback() {
-  const [message, setMessage] = useState('Verifying...');
+  const [message, setMessage] = useState('Verifying your login...');
   const router = useRouter();
 
   useEffect(() => {
     const verifyUser = async () => {
       try {
-        // Get session or fallback to getUser
-        let { data: { session }, error } = await supabase.auth.getSession();
-        if (!session?.user?.email) {
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
-          if (!user?.email) {
-            console.error("Auth failed:", error || userError);
-            setMessage("❌ Could not verify email.");
-            return;
-          }
-          session = { user };
+        // Step 1: Exchange access_token from URL fragment
+        const { error: tokenError } = await supabase.auth.exchangeCodeForSession();
+        if (tokenError) {
+          console.error("Token exchange error:", tokenError);
+          setMessage("❌ Invalid or expired link.");
+          return;
         }
 
-        const userEmail = session.user.email.toLowerCase();
+        // Step 2: Get session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session?.user?.email) {
+          console.error("Session error:", sessionError);
+          setMessage("❌ Unable to retrieve session.");
+          return;
+        }
 
-        // Find voter by email (before deletion)
-        const { data: voter, error: voterError } = await supabase
+        const email = session.user.email.toLowerCase();
+
+        // Step 3: Find voter record by email
+        const { data: voter, error: findError } = await supabase
           .from('voter')
           .select('*')
-          .ilike('email', userEmail)
+          .eq('email', email)
           .single();
 
-        if (voterError || !voter) {
-          console.error("Voter not found:", voterError);
+        if (findError || !voter) {
+          console.error("Voter not found:", findError);
           setMessage("❌ Voter record not found.");
           return;
         }
 
         const { id, username, mobile, county, subcounty, ward, polling_centre } = voter;
 
-        // Hash identity
-        const voterHash = sha256(`${userEmail}:${mobile}:${username}`).toString();
+        // Step 4: Generate voter_hash
+        const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
 
-        // Fetch location names
-        const [{ data: c }, { data: sc }, { data: w }, { data: pc }] = await Promise.all([
-          supabase.from('counties').select('name').eq('code', county).maybeSingle(),
-          supabase.from('subcounties').select('name').eq('code', subcounty).maybeSingle(),
-          supabase.from('wards').select('name').eq('code', ward).maybeSingle(),
-          supabase.from('polling_centres').select('name').eq('id', polling_centre).maybeSingle(),
-        ]);
-
+        // Step 5: Update voter record
         const updatePayload = {
           voter_hash: voterHash,
           status: 'verified',
           email: null,
-          mobile: null,
-          county_name: c?.name || '',
-          subcounty_name: sc?.name || '',
-          ward_name: w?.name || '',
-          polling_centre_name: pc?.name || '',
+          mobile: null
         };
 
         const { error: updateError } = await supabase
@@ -68,17 +61,19 @@ export default function Callback() {
           .eq('id', id);
 
         if (updateError) {
-          console.error("Update error:", updateError);
+          console.error("Update failed:", updateError);
           setMessage("❌ Could not update voter record.");
           return;
         }
 
         localStorage.removeItem('pending_registration');
-        setMessage("✅ Registration complete. Redirecting...");
+        setMessage("✅ Registration complete! Redirecting...");
+
         setTimeout(() => router.push('/dashboard'), 2000);
+
       } catch (err) {
         console.error("Unexpected error:", err);
-        setMessage("❌ Unexpected error occurred.");
+        setMessage("❌ An unexpected error occurred.");
       }
     };
 
