@@ -1,67 +1,52 @@
-// pages/verify.js
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 import sha256 from 'crypto-js/sha256';
 
 export default function Verify() {
-  const [otp, setOtp] = useState('');
+  const [otpInput, setOtpInput] = useState('');
   const [info, setInfo] = useState('');
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
-
-  useEffect(() => {
-    // Get email from pending registration
-    const pending = JSON.parse(localStorage.getItem('pending_registration') || '{}');
-    if (pending?.email) {
-      setEmail(pending.email);
-    }
-  }, []);
-
   const handleVerify = async (e) => {
     e.preventDefault();
-    if (!otp || otp.length !== 6) return setInfo('❌ Enter a valid 6-digit OTP.');
 
-    setInfo('⏳ Verifying...');
+    const pending = JSON.parse(localStorage.getItem('pending_registration') || '{}');
+    const { email, username, mobile, county, subcounty, ward, polling_centre } = pending;
 
-    // Step 1: Check OTP validity
-    const { data: match, error: otpError } = await supabase
+    if (!email || !username || !mobile || !county || !subcounty || !ward || !polling_centre) {
+      return setInfo('❌ Incomplete registration data. Please register again.');
+    }
+
+    setInfo('⏳ Verifying OTP...');
+
+    // 1. Check OTP match and expiry
+    const { data: otpRecord, error: otpError } = await supabase
       .from('otp_verification')
       .select('*')
       .eq('email', email)
-      .eq('otp', otp)
-      .eq('used', false)
-      .lte('expires_at', new Date().toISOString())
+      .eq('otp', otpInput)
+      .gte('expires_at', new Date().toISOString())
       .maybeSingle();
 
-    if (!match || otpError) {
+    if (otpError || !otpRecord) {
       return setInfo('❌ Invalid or expired OTP.');
     }
 
-    // Step 2: Get pending registration data
-    const pending = JSON.parse(localStorage.getItem('pending_registration') || '{}');
-    const { username, mobile, county, subcounty, ward, polling_centre } = pending;
-
-    if (!username || !mobile || !county || !subcounty || !ward || !polling_centre) {
-      return setInfo('❌ Incomplete registration data.');
-    }
-
-    // Step 3: Check if already registered
+    // 2. Prevent duplicate registration
     const { data: existing } = await supabase
       .from('voter')
       .select('id')
-      .or(`username.eq.${username},mobile.eq.${mobile},email.eq.${email}`)
+      .or(`email.eq.${email},mobile.eq.${mobile},username.eq.${username}`)
       .maybeSingle();
 
     if (existing) {
       return setInfo('❌ Already registered.');
     }
 
-    // Step 4: Create voter hash
+    // 3. Create hashed voter identity
     const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
 
-    // Step 5: Insert voter
     const { error: insertError } = await supabase.from('voter').insert([{
       username,
       email: null,
@@ -71,46 +56,41 @@ export default function Verify() {
       ward,
       polling_centre,
       voter_hash: voterHash,
-      status: 'verified',
+      status: 'verified'
     }]);
 
     if (insertError) {
-      console.error('Insert error:', insertError);
-      return setInfo('❌ Failed to save voter record.');
+      console.error(insertError);
+      return setInfo('❌ Could not save voter data.');
     }
 
-    // Step 6: Mark OTP used
-    await supabase
-      .from('otp_verification')
-      .update({ used: true })
-      .eq('id', match.id);
-
-    // Step 7: Clean up and redirect
+    // 4. Cleanup
+    await supabase.from('otp_verification').delete().eq('email', email);
     localStorage.removeItem('pending_registration');
-    setInfo('✅ Verified! Redirecting...');
-    setTimeout(() => router.push('/dashboard'), 1500);
+
+    setInfo('✅ Verified and registered! Redirecting...');
+    setTimeout(() => router.push('/dashboard'), 2000);
   };
 
   return (
-    <div style={{ maxWidth: 480, margin: '4rem auto', padding: 24, textAlign: 'center', border: '1px solid #ddd', borderRadius: 10 }}>
-      <h2>Enter OTP</h2>
-      <p>We've sent a 6-digit code to <strong>{email}</strong>.</p>
+    <div style={{ padding: 40, textAlign: 'center', maxWidth: 480, margin: 'auto' }}>
+      <h2>Enter Your OTP</h2>
       <form onSubmit={handleVerify}>
         <input
           type="text"
-          placeholder="Enter 6-digit OTP"
+          placeholder="Enter the 6-digit OTP"
+          value={otpInput}
+          onChange={(e) => setOtpInput(e.target.value)}
           maxLength={6}
-          value={otp}
-          onChange={(e) => setOtp(e.target.value.replace(/\D/, ''))}
-          style={{ padding: 12, width: '80%', fontSize: 18, textAlign: 'center', marginTop: 20 }}
           required
+          style={{ padding: 10, width: '80%', marginTop: 20, fontSize: 18 }}
         />
         <br />
-        <button type="submit" style={{ padding: '10px 20px', marginTop: 20, fontWeight: 'bold' }}>
-          Verify
+        <button type="submit" style={{ marginTop: 20, padding: '10px 20px', fontWeight: 'bold' }}>
+          Verify & Complete
         </button>
-        {info && <p style={{ marginTop: 20 }}>{info}</p>}
       </form>
+      {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
     </div>
   );
 }
