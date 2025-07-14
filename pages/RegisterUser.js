@@ -128,10 +128,10 @@ const RegisterUser = () => {
     setInfo('📧 Sending OTP...');
     try {
       await emailjs.send(
-        'your_service_id',     // Replace with actual
-        'your_template_id',    // Replace with actual
+        'service_21itetw',     // Replace with actual
+        'template_ks69v69',    // Replace with actual
         { to_email: email, otp },
-        'your_public_key'      // Replace with actual
+        'OrOyy74P28MfrgPhr'      // Replace with actual
       );
     } catch (err) {
       console.error('EmailJS error:', err);
