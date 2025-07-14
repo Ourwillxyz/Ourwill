@@ -10,87 +10,87 @@ export default function Callback() {
 
   useEffect(() => {
     const verifyUser = async () => {
-      // Step 1: Exchange the magic link code for a session
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession();
-      if (exchangeError) {
-        console.error('Exchange error:', exchangeError);
-        setMessage('❌ Invalid or expired link.');
-        return;
+      try {
+        // Exchange the code for a session
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession();
+        if (exchangeError) {
+          console.error('Exchange failed:', exchangeError.message);
+          setMessage('❌ Invalid or expired link.');
+          return;
+        }
+
+        // Get the authenticated session
+        const { data: { session } } = await supabase.auth.getSession();
+        const email = session?.user?.email;
+
+        if (!email) {
+          setMessage('❌ Could not verify session.');
+          return;
+        }
+
+        // Load data from localStorage
+        const pending = JSON.parse(localStorage.getItem('pending_registration') || '{}');
+        const {
+          username,
+          mobile,
+          county,
+          subcounty,
+          ward,
+          polling_centre
+        } = pending;
+
+        if (!username || !mobile || !county || !subcounty || !ward || !polling_centre) {
+          setMessage('❌ Missing registration data.');
+          return;
+        }
+
+        // Check for existing voter
+        const { data: exists } = await supabase
+          .from('voter')
+          .select('id')
+          .or(`email.eq.${email},mobile.eq.${mobile},username.eq.${username}`)
+          .maybeSingle();
+
+        if (exists) {
+          setMessage('❌ Already registered.');
+          return;
+        }
+
+        // Generate voter_hash
+        const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
+
+        // Save voter
+        const { error: insertError } = await supabase.from('voter').insert([{
+          username,
+          email: null,
+          mobile: null,
+          county,
+          subcounty,
+          ward,
+          polling_centre,
+          voter_hash: voterHash,
+          status: 'verified'
+        }]);
+
+        if (insertError) {
+          console.error(insertError);
+          setMessage('❌ Could not save voter record.');
+          return;
+        }
+
+        localStorage.removeItem('pending_registration');
+        setMessage('✅ Registration complete! Redirecting...');
+        setTimeout(() => router.push('/dashboard'), 2000);
+
+      } catch (e) {
+        console.error('Unexpected error:', e);
+        setMessage('❌ An unexpected error occurred.');
       }
-
-      // Step 2: Get session details
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError || !session?.user?.email) {
-        console.error('Session error:', sessionError);
-        setMessage('❌ Authentication failed.');
-        return;
-      }
-
-      const user = session.user;
-
-      // Get pending data from localStorage
-      const pending = JSON.parse(localStorage.getItem('pending_registration') || '{}');
-      const {
-        username,
-        mobile,
-        county,
-        subcounty,
-        ward,
-        polling_centre
-      } = pending;
-
-      const email = user.email;
-
-      if (!email || !username || !mobile || !county || !subcounty || !ward || !polling_centre) {
-        setMessage('❌ Missing voter information.');
-        return;
-      }
-
-      // Check if already registered
-      const { data: voterExists } = await supabase
-        .from('voter')
-        .select('id')
-        .or(`email.eq.${email},mobile.eq.${mobile},username.eq.${username}`)
-        .maybeSingle();
-
-      if (voterExists) {
-        setMessage('❌ This account is already registered.');
-        return;
-      }
-
-      // Hash the identity (privacy-first approach)
-      const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
-
-      // Insert into voter table
-      const { error: insertError } = await supabase.from('voter').insert([{
-        username,
-        email: null,
-        mobile: null,
-        county,
-        subcounty,
-        ward,
-        polling_centre,
-        voter_hash: voterHash,
-        status: 'verified'
-      }]);
-
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        setMessage('❌ Could not update voter record.');
-        return;
-      }
-
-      // Clear localStorage
-      localStorage.removeItem('pending_registration');
-
-      setMessage('✅ Registration complete! Redirecting...');
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 2000);
     };
 
-    verifyUser();
+    if (router.isReady) {
+      verifyUser();
+    }
   }, [router]);
 
   return (
