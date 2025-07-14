@@ -113,13 +113,19 @@ const RegisterUser = () => {
 
     // Generate OTP and save to Supabase
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const { error: otpError } = await supabase.from('otp_verification').insert([
+    const { data: otpSaved, error: otpError } = await supabase.from('otp_verification').insert([
   {
     email,
     otp,
     used: false,
   },
 ]);
+
+if (otpError) {
+  console.error('Supabase OTP insert error:', otpError);
+  return setInfo('❌ Failed to save OTP code.');
+}
+
 
     if (otpError) {
       console.error(otpError);
