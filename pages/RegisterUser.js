@@ -126,14 +126,14 @@ const RegisterUser = () => {
 
     try {
       await emailjs.send(
-        'YOUR_SERVICE_ID',
-        'YOUR_TEMPLATE_ID',
+        'service_21itetw',
+        'template_ks69v69',
         {
           to_email: email,
           to_name: username,
           otp_code: otp,
         },
-        'YOUR_PUBLIC_KEY'
+        'OrOyy74P28MfrgPhr'
       );
     } catch (emailErr) {
       console.error(emailErr);
