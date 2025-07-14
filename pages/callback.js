@@ -11,7 +11,7 @@ export default function Callback() {
   useEffect(() => {
     const verifyUser = async () => {
       try {
-        // Step 1: Exchange Supabase magic link token for session
+        // Step 1: Exchange the magic link token for a session
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession();
         if (exchangeError) {
           console.error('Token exchange failed:', exchangeError.message);
@@ -19,7 +19,7 @@ export default function Callback() {
           return;
         }
 
-        // Step 2: Get the user session after successful login
+        // Step 2: Get session details
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session?.user?.email) {
           console.error('Session error:', sessionError);
@@ -29,7 +29,7 @@ export default function Callback() {
 
         const email = session.user.email;
 
-        // Step 3: Retrieve pending registration from localStorage
+        // Step 3: Get pending registration data
         const pending = JSON.parse(localStorage.getItem('pending_registration') || '{}');
         const { username, mobile, county, subcounty, ward, polling_centre } = pending;
 
@@ -38,11 +38,14 @@ export default function Callback() {
           return;
         }
 
-        // Step 4: Check if voter already exists
+        // Step 4: Create a hash of the voter identity
+        const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
+
+        // Step 5: Check for existing voter using the hash
         const { data: existing } = await supabase
           .from('voter')
           .select('id')
-          .or(`email.eq.${email},mobile.eq.${mobile},username.eq.${username}`)
+          .eq('voter_hash', voterHash)
           .maybeSingle();
 
         if (existing) {
@@ -50,13 +53,11 @@ export default function Callback() {
           return;
         }
 
-        // Step 5: Create voter_hash and save record
-        const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
-
+        // Step 6: Insert new voter record
         const { error: insertError } = await supabase.from('voter').insert([{
           username,
-          email: null,
-          mobile: null,
+          email: null, // Hide actual email
+          mobile: null, // Hide actual mobile
           county,
           subcounty,
           ward,
@@ -71,7 +72,7 @@ export default function Callback() {
           return;
         }
 
-        // Step 6: Clean up and redirect
+        // Step 7: Cleanup and redirect
         localStorage.removeItem('pending_registration');
         setMessage('✅ Registration complete! Redirecting...');
         setTimeout(() => router.push('/dashboard'), 2000);
