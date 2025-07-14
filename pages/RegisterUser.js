@@ -1,9 +1,8 @@
-// pages/RegisterUser.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../src/supabaseClient';
-import emailjs from 'emailjs-com';
 import Image from 'next/image';
 import logo from '../public/ourwill-logo.png';
+import emailjs from 'emailjs-com';
 
 const RegisterUser = () => {
   const [counties, setCounties] = useState([]);
@@ -84,7 +83,7 @@ const RegisterUser = () => {
     if (selectedWard) fetchPolling();
   }, [selectedWard]);
 
-  // Check uniqueness
+  // Uniqueness check
   const checkUniqueness = async () => {
     const { data, error } = await supabase
       .from('voter')
@@ -93,52 +92,62 @@ const RegisterUser = () => {
     return { data, error };
   };
 
+  // OTP generator
+  const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Handle form submit
   const handleRegister = async (e) => {
     e.preventDefault();
 
     if (!username.trim()) return setInfo('❌ Please enter a username.');
-    if (!/\S+@\S+\.\S+/.test(email)) return setInfo('❌ Please enter a valid email.');
-    if (!/^\d{9}$/.test(mobile)) return setInfo('❌ Enter a valid 9-digit mobile number.');
+    if (!/\S+@\S+\.\S+/.test(email)) return setInfo('❌ Enter valid email.');
+    if (!/^\d{9}$/.test(mobile)) return setInfo('❌ 9-digit mobile only.');
     if (!selectedCounty || !selectedSubcounty || !selectedWard || !selectedPollingCentre) {
-      return setInfo('❌ Please select your full location.');
+      return setInfo('❌ Fill your full location.');
     }
 
     const formattedMobile = `254${mobile}`;
-    setInfo('⏳ Checking existing records...');
+    setInfo('⏳ Checking existing users...');
 
-    const { data: existing, error: checkError } = await checkUniqueness();
-    if (checkError) return setInfo('❌ Error checking database.');
-    if (existing.length > 0) return setInfo('❌ Email, mobile, or username already exists.');
+    const { data: existing, error } = await checkUniqueness();
+    if (error) return setInfo('❌ Error checking uniqueness.');
+    if (existing.length > 0) return setInfo('❌ Email, mobile or username in use.');
 
-    // Step 1: Generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes from now
+    const otp = generateOtp();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 min expiry
 
-    // Step 2: Store OTP in Supabase
-    const { error: otpError } = await supabase.from('otp_verification').insert([
-      { email, otp, expires_at: expiresAt }
+    // Save to otp_verification
+    const { error: otpSaveError } = await supabase.from('otp_verification').insert([
+      {
+        email,
+        otp,
+        expires_at: expiresAt,
+        used: false,
+      },
     ]);
-
-    if (otpError) {
-      console.error('OTP save error:', otpError);
-      return setInfo('❌ Could not store OTP.');
+    if (otpSaveError) {
+      console.error(otpSaveError);
+      return setInfo('❌ Failed to save OTP.');
     }
 
-    // Step 3: Send OTP via EmailJS
-    setInfo('📧 Sending OTP...');
+    // Send OTP via EmailJS
     try {
       await emailjs.send(
-        'service_21itetw',     // Replace with actual
-        'template_ks69v69',    // Replace with actual
-        { to_email: email, otp },
-        'OrOyy74P28MfrgPhr'      // Replace with actual
+        'YOUR_SERVICE_ID',
+        'YOUR_TEMPLATE_ID',
+        {
+          to_email: email,
+          to_name: username,
+          otp_code: otp,
+        },
+        'YOUR_PUBLIC_KEY'
       );
-    } catch (err) {
-      console.error('EmailJS error:', err);
-      return setInfo('❌ Failed to send email.');
+    } catch (emailError) {
+      console.error(emailError);
+      return setInfo('❌ Failed to send OTP email.');
     }
 
-    // Step 4: Store user input in localStorage
+    // Save pending data
     localStorage.setItem('pending_registration', JSON.stringify({
       email,
       username,
@@ -149,7 +158,10 @@ const RegisterUser = () => {
       polling_centre: selectedPollingCentre,
     }));
 
-    setInfo('✅ OTP sent! Check your email and verify.');
+    setInfo('✅ OTP sent to your email. Enter it on the next page.');
+    setTimeout(() => {
+      window.location.href = '/verify';
+    }, 1500);
   };
 
   return (
@@ -172,35 +184,51 @@ const RegisterUser = () => {
     >
       <Image src={logo} alt="OurWill Logo" width={140} />
       <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
-        <input type="text" placeholder="Unique Username" value={username}
-          onChange={(e) => setUsername(e.target.value)} required
-          style={{ width: '90%', padding: 10, margin: '10px 0' }} />
-        <input type="email" placeholder="Email address" value={email}
-          onChange={(e) => setEmail(e.target.value)} required
-          style={{ width: '90%', padding: 10, margin: '10px 0' }} />
-        <input type="tel" placeholder="Mobile (712345678)" value={mobile}
+        <input
+          type="text"
+          placeholder="Unique Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+          style={{ width: '90%', padding: 10, margin: '10px 0' }}
+        />
+        <input
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          style={{ width: '90%', padding: 10, margin: '10px 0' }}
+        />
+        <input
+          type="tel"
+          placeholder="Mobile (712345678)"
+          value={mobile}
           onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))}
-          maxLength={9} required style={{ width: '90%', padding: 10, margin: '10px 0' }} />
+          maxLength={9}
+          required
+          style={{ width: '90%', padding: 10, margin: '10px 0' }}
+        />
 
         <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select County --</option>
-          {counties.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+          {counties.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
         </select>
         <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select Subcounty --</option>
-          {subcounties.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+          {subcounties.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
         </select>
         <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select Ward --</option>
-          {wards.map((w) => <option key={w.id} value={w.name}>{w.name}</option>)}
+          {wards.map((w) => <option key={w.name} value={w.name}>{w.name}</option>)}
         </select>
         <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
           <option value="">-- Select Polling Centre --</option>
-          {pollingCentres.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+          {pollingCentres.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
         </select>
 
         <button type="submit" style={{ marginTop: 16, padding: '10px 20px', fontWeight: 'bold' }}>
-          Register
+          Register / Request OTP
         </button>
         {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
       </form>
