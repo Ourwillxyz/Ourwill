@@ -124,7 +124,7 @@ const RegisterUser = () => {
     // Step 3: Send email using EmailJS
     try {
       await emailjs.send(
-        'your_service_id',    // Replace with your actual EmailJS service ID
+        'service_21itetw',    // Replace with your actual EmailJS service ID
         'your_template_id',   // Replace with your template ID
         {
           to_email: email,
