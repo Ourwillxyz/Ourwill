@@ -109,14 +109,15 @@ const RegisterUser = () => {
     if (checkError) return setInfo('❌ Error checking existing users.');
     if (existing.length > 0) return setInfo('❌ Email, mobile, or username already registered.');
 
-    // Generate and save OTP
+    // Generate OTP and save to Supabase
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const { error: otpError } = await supabase.from('otp_verification').insert([
       {
         email: email.trim(),
         otp: otp,
         used: false,
-      }
+      },
     ]);
 
     if (otpError) {
@@ -124,21 +125,21 @@ const RegisterUser = () => {
       return setInfo('❌ Failed to save OTP code.');
     }
 
-    // Send OTP
+    // Send OTP via EmailJS
     try {
       const now = new Date().toLocaleString();
       await emailjs.send(
-        'service_XXXXXXX', // replace with your EmailJS service ID
-        'template_XXXXXXX', // replace with your EmailJS template ID
+        'service_21itetw',
+        'template_ks69v69',
         {
           email,
           passcode: otp,
           time: now,
         },
-        'user_XXXXXXX' // replace with your EmailJS public key
+        'OrOyy74P28MfrgPhr'
       );
 
-      // Save registration
+      // Save pending registration
       localStorage.setItem('pending_registration', JSON.stringify({
         email,
         username,
@@ -149,8 +150,10 @@ const RegisterUser = () => {
         polling_centre: selectedPollingCentre,
       }));
 
-      // Redirect to verify page
-      window.location.href = '/verify';
+      setInfo('✅ OTP sent to your email. Redirecting to verification page...');
+      setTimeout(() => {
+        window.location.href = '/verify';
+      }, 1500);
 
     } catch (err) {
       console.error('❌ EmailJS error:', err);
