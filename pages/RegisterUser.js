@@ -1,3 +1,4 @@
+// pages/RegisterUser.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../src/supabaseClient';
 import emailjs from 'emailjs-com';
@@ -108,14 +109,13 @@ const RegisterUser = () => {
     if (checkError) return setInfo('❌ Error checking existing users.');
     if (existing.length > 0) return setInfo('❌ Email, mobile, or username already registered.');
 
-    // Generate OTP and save to Supabase
+    // Generate and save OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
     const { error: otpError } = await supabase.from('otp_verification').insert([
       {
         email: email.trim(),
         otp: otp,
-        used: false
+        used: false,
       }
     ]);
 
@@ -124,23 +124,21 @@ const RegisterUser = () => {
       return setInfo('❌ Failed to save OTP code.');
     }
 
-    // Send OTP via EmailJS
+    // Send OTP
     try {
       const now = new Date().toLocaleString();
       await emailjs.send(
-        'service_21itetw',
-        'template_ks69v69',
+        'service_XXXXXXX', // replace with your EmailJS service ID
+        'template_XXXXXXX', // replace with your EmailJS template ID
         {
           email,
           passcode: otp,
-          time: now
+          time: now,
         },
-        'OrOyy74P28MfrgPhr'
+        'user_XXXXXXX' // replace with your EmailJS public key
       );
 
-      setInfo('✅ OTP sent to your email.');
-
-      // Save pending registration
+      // Save registration
       localStorage.setItem('pending_registration', JSON.stringify({
         email,
         username,
@@ -150,6 +148,10 @@ const RegisterUser = () => {
         ward: selectedWard,
         polling_centre: selectedPollingCentre,
       }));
+
+      // Redirect to verify page
+      window.location.href = '/verify';
+
     } catch (err) {
       console.error('❌ EmailJS error:', err);
       setInfo('❌ Failed to send OTP email.');
