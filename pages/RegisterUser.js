@@ -1,4 +1,3 @@
-// pages/RegisterUser.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../src/supabaseClient';
 import emailjs from 'emailjs-com';
@@ -21,7 +20,6 @@ const RegisterUser = () => {
   const [mobile, setMobile] = useState('');
   const [info, setInfo] = useState('');
 
-  // Fetch counties
   useEffect(() => {
     const fetchCounties = async () => {
       const { data, error } = await supabase.from('counties').select('*').order('name');
@@ -30,7 +28,6 @@ const RegisterUser = () => {
     fetchCounties();
   }, []);
 
-  // Fetch subcounties
   useEffect(() => {
     const fetchSubcounties = async () => {
       if (!selectedCounty) return;
@@ -50,7 +47,6 @@ const RegisterUser = () => {
     if (selectedCounty) fetchSubcounties();
   }, [selectedCounty]);
 
-  // Fetch wards
   useEffect(() => {
     const fetchWards = async () => {
       if (!selectedSubcounty) return;
@@ -68,7 +64,6 @@ const RegisterUser = () => {
     if (selectedSubcounty) fetchWards();
   }, [selectedSubcounty]);
 
-  // Fetch polling centres
   useEffect(() => {
     const fetchPolling = async () => {
       if (!selectedWard) return;
@@ -84,7 +79,6 @@ const RegisterUser = () => {
     if (selectedWard) fetchPolling();
   }, [selectedWard]);
 
-  // Check uniqueness
   const checkUniqueness = async () => {
     const { data, error } = await supabase
       .from('voter')
@@ -93,7 +87,6 @@ const RegisterUser = () => {
     return { data, error };
   };
 
-  // Handle registration
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -111,28 +104,21 @@ const RegisterUser = () => {
     if (checkError) return setInfo('❌ Error checking existing users.');
     if (existing.length > 0) return setInfo('❌ Email, mobile, or username already registered.');
 
-    // Generate OTP and save to Supabase
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const { data: otpSaved, error: otpError } = await supabase.from('otp_verification').insert([
-  {
-    email,
-    otp,
-    used: false,
-  },
-]);
 
-if (otpError) {
-  console.error('Supabase OTP insert error:', otpError);
-  return setInfo('❌ Failed to save OTP code.');
-}
-
+    const { error: otpError } = await supabase.from('otp_verification').insert([
+      {
+        email: email.trim(),
+        otp: otp,
+        used: false,
+      }
+    ]);
 
     if (otpError) {
-      console.error(otpError);
+      console.error('❌ OTP Save Error:', otpError);
       return setInfo('❌ Failed to save OTP code.');
     }
 
-    // Send OTP via EmailJS
     try {
       const now = new Date().toLocaleString();
       await emailjs.send(
@@ -147,7 +133,6 @@ if (otpError) {
       );
       setInfo('✅ OTP sent to your email.');
 
-      // Save pending registration
       localStorage.setItem('pending_registration', JSON.stringify({
         email,
         username,
