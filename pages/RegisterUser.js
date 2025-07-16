@@ -1,7 +1,7 @@
-// pages/RegisterUser.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../src/supabaseClient';
 import emailjs from 'emailjs-com';
+import sha256 from 'crypto-js/sha256';
 import Image from 'next/image';
 import logo from '../public/ourwill-logo.png';
 
@@ -21,78 +21,59 @@ const RegisterUser = () => {
   const [mobile, setMobile] = useState('');
   const [info, setInfo] = useState('');
 
-  // Fetch counties
+  // Fetch dropdown data
   useEffect(() => {
     const fetchCounties = async () => {
-      const { data, error } = await supabase.from('counties').select('*').order('name');
-      if (!error) setCounties(data);
+      const { data } = await supabase.from('counties').select('*').order('name');
+      if (data) setCounties(data);
     };
     fetchCounties();
   }, []);
 
-  // Fetch subcounties
   useEffect(() => {
     const fetchSubcounties = async () => {
-      if (!selectedCounty) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('subcounties')
         .select('*')
         .eq('county_code', selectedCounty)
         .order('name');
-      if (!error) setSubcounties(data);
+      setSubcounties(data || []);
     };
+    if (selectedCounty) fetchSubcounties();
     setSelectedSubcounty('');
     setSelectedWard('');
     setSelectedPollingCentre('');
-    setSubcounties([]);
     setWards([]);
     setPollingCentres([]);
-    if (selectedCounty) fetchSubcounties();
   }, [selectedCounty]);
 
-  // Fetch wards
   useEffect(() => {
     const fetchWards = async () => {
-      if (!selectedSubcounty) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('wards')
         .select('*')
         .eq('subcounty_code', selectedSubcounty)
         .order('name');
-      if (!error) setWards(data);
+      setWards(data || []);
     };
+    if (selectedSubcounty) fetchWards();
     setSelectedWard('');
     setSelectedPollingCentre('');
-    setWards([]);
     setPollingCentres([]);
-    if (selectedSubcounty) fetchWards();
   }, [selectedSubcounty]);
 
-  // Fetch polling centres
   useEffect(() => {
     const fetchPolling = async () => {
-      if (!selectedWard) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('polling_centres')
         .select('*')
         .eq('ward_code', selectedWard)
         .order('name');
-      if (!error) setPollingCentres(data);
+      setPollingCentres(data || []);
     };
-    setSelectedPollingCentre('');
-    setPollingCentres([]);
     if (selectedWard) fetchPolling();
+    setSelectedPollingCentre('');
   }, [selectedWard]);
-
-  // Check uniqueness
-  const checkUniqueness = async () => {
-    const fullMobile = `254${mobile}`;
-    const { data, error } = await supabase
-      .from('voter')
-      .select('email, mobile, username')
-      .or(`email.eq.${email},mobile.eq.${fullMobile},username.eq.${username}`);
-    return { data, error };
-  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -105,20 +86,30 @@ const RegisterUser = () => {
     }
 
     const fullMobile = `254${mobile}`;
-    setInfo('⏳ Checking credentials...');
+    const emailHash = sha256(email.trim().toLowerCase()).toString();
+    const mobileHash = sha256(fullMobile).toString();
+    const usernameHash = sha256(username.trim().toLowerCase()).toString();
 
-    const { data: existing, error: checkError } = await checkUniqueness();
-    if (checkError) return setInfo('❌ Error checking existing users.');
-    if (existing.length > 0) return setInfo('❌ Email, mobile, or username already registered.');
+    setInfo('⏳ Checking existing voter...');
 
-    // Generate and save OTP
+    const { data: existing } = await supabase
+      .from('voter')
+      .select('id')
+      .or(`email_hash.eq.${emailHash},mobile_hash.eq.${mobileHash},username_hash.eq.${usernameHash}`)
+      .maybeSingle();
+
+    if (existing) {
+      return setInfo('❌ This email, mobile, or username is already in use.');
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const { error: otpError } = await supabase.from('otp_verification').insert([
       {
-        email: email.trim(),
+        email,
         otp,
         used: false,
-      }
+      },
     ]);
 
     if (otpError) {
@@ -126,7 +117,6 @@ const RegisterUser = () => {
       return setInfo('❌ Failed to save OTP code.');
     }
 
-    // Send OTP via EmailJS
     try {
       const now = new Date().toLocaleString();
       await emailjs.send(
@@ -140,9 +130,6 @@ const RegisterUser = () => {
         'OrOyy74P28MfrgPhr'
       );
 
-      setInfo('✅ OTP sent to your email.');
-
-      // Save registration info for verify step
       localStorage.setItem('pending_registration', JSON.stringify({
         email,
         username,
@@ -153,6 +140,7 @@ const RegisterUser = () => {
         polling_centre: selectedPollingCentre,
       }));
 
+      setInfo('✅ OTP sent. Redirecting to verification...');
       setTimeout(() => {
         window.location.href = '/verify';
       }, 1500);
@@ -180,26 +168,26 @@ const RegisterUser = () => {
     }}>
       <Image src={logo} alt="OurWill Logo" width={140} />
       <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
-        <input type="text" placeholder="Unique Username" value={username} onChange={(e) => setUsername(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }} />
-        <input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }} />
-        <input type="tel" placeholder="Mobile (712345678)" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))} maxLength={9} required style={{ width: '90%', padding: 10, margin: '10px 0' }} />
+        <input type="text" placeholder="Unique Username" value={username} onChange={(e) => setUsername(e.target.value)} required style={inputStyle} />
+        <input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
+        <input type="tel" placeholder="Mobile (712345678)" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))} maxLength={9} required style={inputStyle} />
 
-        <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={{ width: '90%', padding: 10, margin: '10px 0' }}>
+        <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={inputStyle}>
           <option value="">-- Select County --</option>
           {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
 
-        <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
+        <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={inputStyle}>
           <option value="">-- Select Subcounty --</option>
           {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
         </select>
 
-        <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
+        <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={inputStyle}>
           <option value="">-- Select Ward --</option>
           {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
         </select>
 
-        <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={{ width: '90%', padding: 10, margin: '10px 0' }}>
+        <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={inputStyle}>
           <option value="">-- Select Polling Centre --</option>
           {pollingCentres.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
         </select>
@@ -209,6 +197,12 @@ const RegisterUser = () => {
       </form>
     </div>
   );
+};
+
+const inputStyle = {
+  width: '90%',
+  padding: 10,
+  margin: '10px 0'
 };
 
 export default RegisterUser;
