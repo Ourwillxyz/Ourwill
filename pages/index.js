@@ -6,7 +6,7 @@ export default function Home() {
   const router = useRouter();
 
   const handleRegister = () => router.push('/RegisterUser');
-  const handleLogin = () => router.push('/Login');
+  const handlelogin = () => router.push('/login');
 
   return (
     <div style={{
@@ -42,7 +42,7 @@ export default function Home() {
 
         <div style={{ marginBottom: '2rem' }}>
           <button onClick={handleRegister} style={buttonStyle}>📝 Register</button>
-          <button onClick={handleLogin} style={{ ...buttonStyle, backgroundColor: '#28a745' }}>🔐 Login</button>
+          <button onClick={handlelogin} style={{ ...buttonStyle, backgroundColor: '#28a745' }}>🔐 login</button>
         </div>
 
         <section style={sectionStyle}>
