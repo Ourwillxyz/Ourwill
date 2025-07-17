@@ -26,9 +26,9 @@ export default function RegisterUser() {
     const fetchCounties = async () => {
       const { data, error } = await supabase
         .from('counties')
-        .select('name')
+        .select('name, code')
         .order('name');
-      if (data) setCounties(data.map(d => d.name));
+      if (data) setCounties(data);
     };
     fetchCounties();
   }, []);
@@ -36,41 +36,47 @@ export default function RegisterUser() {
   useEffect(() => {
     const fetchSubcounties = async () => {
       if (!formData.county) return;
+      const selectedCounty = counties.find(c => c.name === formData.county);
+      if (!selectedCounty) return;
       const { data } = await supabase
         .from('subcounties')
-        .select('name')
-        .eq('county_name', formData.county)
+        .select('name, code')
+        .eq('county_code', selectedCounty.code)
         .order('name');
-      if (data) setSubcounties(data.map(d => d.name));
+      if (data) setSubcounties(data);
     };
     fetchSubcounties();
-  }, [formData.county]);
+  }, [formData.county, counties]);
 
   useEffect(() => {
     const fetchWards = async () => {
       if (!formData.subcounty) return;
+      const selectedSubcounty = subcounties.find(sc => sc.name === formData.subcounty);
+      if (!selectedSubcounty) return;
       const { data } = await supabase
         .from('wards')
-        .select('name')
-        .eq('subcounty_name', formData.subcounty)
+        .select('name, code')
+        .eq('subcounty_code', selectedSubcounty.code)
         .order('name');
-      if (data) setWards(data.map(d => d.name));
+      if (data) setWards(data);
     };
     fetchWards();
-  }, [formData.subcounty]);
+  }, [formData.subcounty, subcounties]);
 
   useEffect(() => {
     const fetchPollingCentres = async () => {
       if (!formData.ward) return;
+      const selectedWard = wards.find(w => w.name === formData.ward);
+      if (!selectedWard) return;
       const { data } = await supabase
         .from('polling_centres')
         .select('name')
-        .eq('ward_name', formData.ward)
+        .eq('ward_code', selectedWard.code)
         .order('name');
-      if (data) setPollingCentres(data.map(d => d.name));
+      if (data) setPollingCentres(data);
     };
     fetchPollingCentres();
-  }, [formData.ward]);
+  }, [formData.ward, wards]);
 
   const handleChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -122,28 +128,28 @@ export default function RegisterUser() {
           <select name="county" value={formData.county} onChange={handleChange} style={styles.input}>
             <option value="">Select County</option>
             {counties.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c.code} value={c.name}>{c.name}</option>
             ))}
           </select>
 
           <select name="subcounty" value={formData.subcounty} onChange={handleChange} style={styles.input}>
             <option value="">Select Subcounty</option>
             {subcounties.map((sc) => (
-              <option key={sc} value={sc}>{sc}</option>
+              <option key={sc.code} value={sc.name}>{sc.name}</option>
             ))}
           </select>
 
           <select name="ward" value={formData.ward} onChange={handleChange} style={styles.input}>
             <option value="">Select Ward</option>
             {wards.map((w) => (
-              <option key={w} value={w}>{w}</option>
+              <option key={w.code} value={w.name}>{w.name}</option>
             ))}
           </select>
 
           <select name="polling_centre" value={formData.polling_centre} onChange={handleChange} style={styles.input}>
             <option value="">Select Polling Centre</option>
             {pollingCentres.map((pc) => (
-              <option key={pc} value={pc}>{pc}</option>
+              <option key={pc.name} value={pc.name}>{pc.name}</option>
             ))}
           </select>
 
