@@ -2,94 +2,74 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
-import sha256 from 'crypto-js/sha256';
 
 export default function Dashboard() {
-  const router = useRouter();
-  const [session, setSession] = useState(null);
-  const [voter, setVoter] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchSessionAndVoter = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    const fetchUser = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const voterHash = localStorage.getItem('voter_hash');
 
-      if (!session || !session.user) {
-        router.push('/'); // redirect to homepage if not logged in
+      if (!voterHash) {
+        router.push('/');
         return;
       }
 
-      setSession(session);
-
-      const email = session.user.email;
-
-      // Fetch mobile number from the voter table using email
-      const { data: voterMatch, error } = await supabase
+      const { data, error } = await supabase
         .from('voter')
-        .select('mobile, voter_hash, username, county, subcounty, ward, polling_centre')
-        .eq('email', email)
-        .single();
+        .select('*')
+        .eq('voter_hash', voterHash)
+        .maybeSingle();
 
-      if (error || !voterMatch) {
-        console.warn('Voter not found or error:', error);
-        setLoading(false);
+      if (error || !data) {
+        router.push('/');
         return;
       }
 
-      // Hash to compare for voter verification
-      const computedHash = sha256(email + voterMatch.mobile).toString();
-
-      if (computedHash !== voterMatch.voter_hash) {
-        console.warn('Hash mismatch: Unauthorized');
-        setLoading(false);
-        return;
-      }
-
-      setVoter(voterMatch);
+      setUserData(data);
       setLoading(false);
     };
 
-    fetchSessionAndVoter();
-  }, [router]);
+    fetchUser();
+  }, []);
 
-  if (loading) {
-    return <div style={{ padding: 40 }}>Loading your voter dashboard...</div>;
-  }
+  if (loading) return <p style={{ textAlign: 'center', marginTop: '20%' }}>Loading Dashboard...</p>;
 
-  if (!voter) {
-    return (
-      <div style={{ padding: 40, color: 'red' }}>
-        ⚠️ No matching voter record found for your email. Please register again or contact support.
-      </div>
-    );
-  }
+  const formattedNextElection = 'Sunday, 10 August 2025 at 08:00 AM';
 
   return (
-    <div style={{ padding: 40 }}>
-      <h2>Welcome, {voter.username || 'Voter'} 🎉</h2>
-      <p>Your polling information:</p>
-      <ul>
-        <li><strong>County:</strong> {voter.county}</li>
-        <li><strong>Subcounty:</strong> {voter.subcounty}</li>
-        <li><strong>Ward:</strong> {voter.ward}</li>
-        <li><strong>Polling Centre:</strong> {voter.polling_centre}</li>
-      </ul>
+    <div style={{ padding: '2rem', maxWidth: 800, margin: 'auto' }}>
+      <h2>Welcome to Your Voter Dashboard</h2>
+      <p style={{ fontSize: 16 }}>Your registration has been verified successfully.</p>
 
-      <p style={{ marginTop: 30, fontStyle: 'italic' }}>
-        📌 This dashboard will later include your active polls and results.
-      </p>
+      <div style={{ marginTop: 30, padding: 20, border: '1px solid #ccc', borderRadius: 8 }}>
+        <h3>Your Voter Information</h3>
+        <ul>
+          <li><strong>Email:</strong> {userData.email_hash ? 'Hidden (Hashed)' : 'N/A'}</li>
+          <li><strong>County:</strong> {userData.county}</li>
+          <li><strong>Subcounty:</strong> {userData.subcounty}</li>
+          <li><strong>Ward:</strong> {userData.ward}</li>
+          <li><strong>Polling Centre:</strong> {userData.polling_centre}</li>
+        </ul>
+      </div>
 
-      <button
-        onClick={async () => {
-          await supabase.auth.signOut();
-          router.push('/');
-        }}
-        style={{ marginTop: 20, padding: '8px 16px' }}
-      >
-        Logout
-      </button>
+      <div style={{ marginTop: 30 }}>
+        <h3>🗳️ Last Voting Results</h3>
+        <p>Last vote you participated in: <em>Data coming soon</em></p>
+      </div>
+
+      <div style={{ marginTop: 30 }}>
+        <h3>✅ Ongoing Voting</h3>
+        <p>No active votes at the moment.</p>
+      </div>
+
+      <div style={{ marginTop: 30 }}>
+        <h3>📅 Upcoming Voting Notices</h3>
+        <p>Next scheduled vote: <strong>{formattedNextElection}</strong></p>
+      </div>
     </div>
   );
 }
