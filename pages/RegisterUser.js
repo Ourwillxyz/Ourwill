@@ -24,57 +24,82 @@ export default function RegisterUser() {
   const [wards, setWards] = useState([]);
   const [pollingCentres, setPollingCentres] = useState([]);
 
+  // Fetch counties
   useEffect(() => {
     const fetchCounties = async () => {
       const { data, error } = await supabase
         .from('counties')
-        .select('name')
+        .select('code, name')
         .order('name');
-      if (data) setCounties(data.map(d => d.name));
+      if (data) setCounties(data);
     };
     fetchCounties();
   }, []);
 
+  // Fetch subcounties based on selected county
   useEffect(() => {
+    if (!formData.county) return;
     const fetchSubcounties = async () => {
-      if (!formData.county) return;
       const { data } = await supabase
         .from('subcounties')
-        .select('name')
-        .eq('county_name', formData.county)
+        .select('code, name')
+        .eq('county_code', formData.county)
         .order('name');
-      if (data) setSubcounties(data.map(d => d.name));
+      if (data) setSubcounties(data);
     };
     fetchSubcounties();
+    setSubcounties([]);
+    setWards([]);
+    setPollingCentres([]);
+    setFormData((prev) => ({
+      ...prev,
+      subcounty: '',
+      ward: '',
+      polling_centre: '',
+    }));
   }, [formData.county]);
 
+  // Fetch wards based on selected subcounty
   useEffect(() => {
+    if (!formData.subcounty) return;
     const fetchWards = async () => {
-      if (!formData.subcounty) return;
       const { data } = await supabase
         .from('wards')
-        .select('name')
-        .eq('subcounty_name', formData.subcounty)
+        .select('code, name')
+        .eq('subcounty_code', formData.subcounty)
         .order('name');
-      if (data) setWards(data.map(d => d.name));
+      if (data) setWards(data);
     };
     fetchWards();
+    setWards([]);
+    setPollingCentres([]);
+    setFormData((prev) => ({
+      ...prev,
+      ward: '',
+      polling_centre: '',
+    }));
   }, [formData.subcounty]);
 
+  // Fetch polling centres based on selected ward
   useEffect(() => {
+    if (!formData.ward) return;
     const fetchPollingCentres = async () => {
-      if (!formData.ward) return;
       const { data } = await supabase
         .from('polling_centres')
-        .select('name')
-        .eq('ward_name', formData.ward)
+        .select('code, name')
+        .eq('ward_code', formData.ward)
         .order('name');
-      if (data) setPollingCentres(data.map(d => d.name));
+      if (data) setPollingCentres(data);
     };
     fetchPollingCentres();
+    setPollingCentres([]);
+    setFormData((prev) => ({
+      ...prev,
+      polling_centre: '',
+    }));
   }, [formData.ward]);
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -127,28 +152,36 @@ export default function RegisterUser() {
           <select name="county" value={formData.county} onChange={handleChange} style={styles.input}>
             <option value="">Select County</option>
             {counties.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
             ))}
           </select>
 
-          <select name="subcounty" value={formData.subcounty} onChange={handleChange} style={styles.input}>
+          <select name="subcounty" value={formData.subcounty} onChange={handleChange} style={styles.input} disabled={!subcounties.length}>
             <option value="">Select Subcounty</option>
             {subcounties.map((sc) => (
-              <option key={sc} value={sc}>{sc}</option>
+              <option key={sc.code} value={sc.code}>
+                {sc.name}
+              </option>
             ))}
           </select>
 
-          <select name="ward" value={formData.ward} onChange={handleChange} style={styles.input}>
+          <select name="ward" value={formData.ward} onChange={handleChange} style={styles.input} disabled={!wards.length}>
             <option value="">Select Ward</option>
             {wards.map((w) => (
-              <option key={w} value={w}>{w}</option>
+              <option key={w.code} value={w.code}>
+                {w.name}
+              </option>
             ))}
           </select>
 
-          <select name="polling_centre" value={formData.polling_centre} onChange={handleChange} style={styles.input}>
+          <select name="polling_centre" value={formData.polling_centre} onChange={handleChange} style={styles.input} disabled={!pollingCentres.length}>
             <option value="">Select Polling Centre</option>
             {pollingCentres.map((pc) => (
-              <option key={pc} value={pc}>{pc}</option>
+              <option key={pc.code} value={pc.code}>
+                {pc.name}
+              </option>
             ))}
           </select>
 
