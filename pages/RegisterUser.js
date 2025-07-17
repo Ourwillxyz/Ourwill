@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { supabase } from "../src/supabaseClient";
+// src/pages/RegisterUser.js
+import { useEffect, useState } from "react";
+import { supabase } from "../supabaseClient";
 
 export default function RegisterUser() {
   const [counties, setCounties] = useState([]);
@@ -12,92 +13,94 @@ export default function RegisterUser() {
   const [selectedWard, setSelectedWard] = useState("");
   const [selectedPollingCentre, setSelectedPollingCentre] = useState("");
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [message, setMessage] = useState("");
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
 
+  const [statusMessage, setStatusMessage] = useState("");
+
+  // Load counties
   useEffect(() => {
+    const fetchCounties = async () => {
+      const { data, error } = await supabase.from("counties").select("*");
+      if (error) console.error("Error fetching counties:", error);
+      else setCounties(data);
+    };
     fetchCounties();
   }, []);
 
+  // Load subcounties
   useEffect(() => {
-    if (selectedCounty) {
-      fetchSubcounties(selectedCounty);
-    } else {
-      setSubcounties([]);
-      setWards([]);
-      setPollingCentres([]);
-    }
+    if (!selectedCounty) return;
+    const fetchSubcounties = async () => {
+      const { data, error } = await supabase
+        .from("subcounties")
+        .select("*")
+        .eq("county_code", selectedCounty);
+      if (error) console.error("Error fetching subcounties:", error);
+      else setSubcounties(data);
+    };
+    fetchSubcounties();
   }, [selectedCounty]);
 
+  // Load wards
   useEffect(() => {
-    if (selectedSubcounty) {
-      fetchWards(selectedSubcounty);
-    } else {
-      setWards([]);
-      setPollingCentres([]);
-    }
+    if (!selectedSubcounty) return;
+    const fetchWards = async () => {
+      const { data, error } = await supabase
+        .from("wards")
+        .select("*")
+        .eq("subcounty_code", selectedSubcounty);
+      if (error) console.error("Error fetching wards:", error);
+      else setWards(data);
+    };
+    fetchWards();
   }, [selectedSubcounty]);
 
+  // Load polling centres
   useEffect(() => {
-    if (selectedWard) {
-      fetchPollingCentres(selectedWard);
-    } else {
-      setPollingCentres([]);
-    }
+    if (!selectedWard) return;
+    const fetchPollingCentres = async () => {
+      const { data, error } = await supabase
+        .from("polling_centres")
+        .select("*")
+        .eq("ward_code", selectedWard);
+      if (error) console.error("Error fetching polling centres:", error);
+      else setPollingCentres(data);
+    };
+    fetchPollingCentres();
   }, [selectedWard]);
 
-  const fetchCounties = async () => {
-    const { data, error } = await supabase.from("counties").select("*");
-    if (!error) setCounties(data);
-  };
-
-  const fetchSubcounties = async (countyCode) => {
-    const { data, error } = await supabase
-      .from("subcounties")
-      .select("*")
-      .eq("county_code", countyCode);
-    if (!error) setSubcounties(data);
-  };
-
-  const fetchWards = async (subcountyCode) => {
-    const { data, error } = await supabase
-      .from("wards")
-      .select("*")
-      .eq("subcounty_code", subcountyCode);
-    if (!error) setWards(data);
-  };
-
-  const fetchPollingCentres = async (wardCode) => {
-    const { data, error } = await supabase
-      .from("polling_centres")
-      .select("*")
-      .eq("ward_code", wardCode);
-    if (!error) setPollingCentres(data);
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setStatusMessage("Registering...");
 
-    const { error } = await supabase.from("voter").insert({
-      name,
-      email,
-      phone,
-      county_code: selectedCounty,
-      subcounty_code: selectedSubcounty,
-      ward_code: selectedWard,
-      polling_centre_code: selectedPollingCentre,
-    });
+    const { name, email, phone } = formData;
+
+    const { error } = await supabase.from("voter").insert([
+      {
+        name,
+        email,
+        phone,
+        county_code: selectedCounty,
+        subcounty_code: selectedSubcounty,
+        ward_code: selectedWard,
+        polling_centre_code: selectedPollingCentre,
+      },
+    ]);
 
     if (error) {
-      setMessage("❌ Failed to register. Please try again.");
-      console.error(error.message);
+      console.error("Registration error:", error);
+      setStatusMessage("❌ Failed to register. Please try again.");
     } else {
-      setMessage("✅ Registered successfully.");
-      setName("");
-      setEmail("");
-      setPhone("");
+      setStatusMessage("✅ Successfully registered!");
+      setFormData({ name: "", email: "", phone: "" });
       setSelectedCounty("");
       setSelectedSubcounty("");
       setSelectedWard("");
@@ -106,104 +109,84 @@ export default function RegisterUser() {
   };
 
   return (
-    <div style={{ maxWidth: "600px", margin: "auto", padding: "2rem" }}>
-      {/* Logo and Flag */}
+    <div style={{ maxWidth: 600, margin: "auto", padding: "1rem" }}>
+      {/* App Logo and Flag */}
       <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-        <img
-          src="/logo.png"
-          alt="OurWill Logo"
-          style={{ height: "80px", marginBottom: "0.5rem" }}
-        />
-        <img
-          src="/flag.png"
-          alt="Kenya Flag"
-          style={{ height: "40px", opacity: 0.5 }}
-        />
+        <img src="/logo.png" alt="OurWill Logo" style={{ height: 60 }} />
+        <img src="/flag.png" alt="Kenya Flag" style={{ height: 40, opacity: 0.6, marginTop: 10 }} />
       </div>
 
-      <h2>Register to OurWill</h2>
-
+      <h2 style={{ textAlign: "center" }}>Register as a Voter</h2>
       <form onSubmit={handleRegister}>
         <input
           type="text"
+          name="name"
           placeholder="Full Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={formData.name}
+          onChange={handleInputChange}
           required
-        /><br />
-
+          style={{ width: "100%", marginBottom: 10 }}
+        />
         <input
           type="email"
-          placeholder="Email Address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          name="email"
+          placeholder="Email"
+          value={formData.email}
+          onChange={handleInputChange}
           required
-        /><br />
-
+          style={{ width: "100%", marginBottom: 10 }}
+        />
         <input
           type="tel"
-          placeholder="Phone Number"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          name="phone"
+          placeholder="Phone"
+          value={formData.phone}
+          onChange={handleInputChange}
           required
-        /><br />
+          style={{ width: "100%", marginBottom: 10 }}
+        />
 
-        <select
-          value={selectedCounty}
-          onChange={(e) => setSelectedCounty(e.target.value)}
-          required
-        >
-          <option value="">-- Select County --</option>
-          {counties.map((county) => (
-            <option key={county.code} value={county.code}>
-              {county.name}
+        <select required value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)}>
+          <option value="">Select County</option>
+          {counties.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.name}
             </option>
           ))}
-        </select><br />
+        </select>
 
-        <select
-          value={selectedSubcounty}
-          onChange={(e) => setSelectedSubcounty(e.target.value)}
-          required
-        >
-          <option value="">-- Select Subcounty --</option>
-          {subcounties.map((sc) => (
-            <option key={sc.code} value={sc.code}>
-              {sc.name}
+        <select required value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)}>
+          <option value="">Select Subcounty</option>
+          {subcounties.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.name}
             </option>
           ))}
-        </select><br />
+        </select>
 
-        <select
-          value={selectedWard}
-          onChange={(e) => setSelectedWard(e.target.value)}
-          required
-        >
-          <option value="">-- Select Ward --</option>
-          {wards.map((ward) => (
-            <option key={ward.code} value={ward.code}>
-              {ward.name}
+        <select required value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)}>
+          <option value="">Select Ward</option>
+          {wards.map((w) => (
+            <option key={w.code} value={w.code}>
+              {w.name}
             </option>
           ))}
-        </select><br />
+        </select>
 
-        <select
-          value={selectedPollingCentre}
-          onChange={(e) => setSelectedPollingCentre(e.target.value)}
-          required
-        >
-          <option value="">-- Select Polling Centre --</option>
-          {pollingCentres.map((pc) => (
-            <option key={pc.code} value={pc.code}>
-              {pc.name}
+        <select required value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)}>
+          <option value="">Select Polling Centre</option>
+          {pollingCentres.map((p) => (
+            <option key={p.code} value={p.code}>
+              {p.name}
             </option>
           ))}
-        </select><br />
+        </select>
 
-        <button type="submit">Register</button>
+        <button type="submit" style={{ width: "100%", marginTop: 10 }}>
+          Register
+        </button>
       </form>
-
-      {message && <p style={{ marginTop: "1rem" }}>{message}</p>}
+      {statusMessage && <p style={{ textAlign: "center", marginTop: 10 }}>{statusMessage}</p>}
     </div>
   );
 }
