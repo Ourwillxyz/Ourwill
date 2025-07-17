@@ -16,22 +16,18 @@ export default function Verify() {
     const stored = JSON.parse(localStorage.getItem('pending_registration') || '{}');
     if (stored.email) setEmail(stored.email);
 
-    // Countdown logic
-    let timer;
-    if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    }
+    const timer = countdown > 0
+      ? setTimeout(() => setCountdown(countdown - 1), 1000)
+      : null;
     return () => clearTimeout(timer);
   }, [countdown]);
 
   const handleVerify = async (e) => {
     e.preventDefault();
-
     if (!otpInput.trim()) return setInfo('❌ Please enter your OTP.');
-    if (!email) return setInfo('❌ Missing email context.');
+    if (!email) return setInfo('❌ Email is missing.');
 
     setInfo('⏳ Verifying OTP...');
-
     const { data: match, error } = await supabase
       .from('otp_verification')
       .select('*')
@@ -42,11 +38,10 @@ export default function Verify() {
 
     if (!match || error) return setInfo('❌ Invalid or expired OTP.');
 
-    await supabase
-      .from('otp_verification')
-      .update({ used: true })
-      .eq('id', match.id);
+    // Mark OTP used
+    await supabase.from('otp_verification').update({ used: true }).eq('id', match.id);
 
+    // Restore user data
     const pending = JSON.parse(localStorage.getItem('pending_registration') || '{}');
     const { username, mobile, county, subcounty, ward, polling_centre } = pending;
 
@@ -54,14 +49,29 @@ export default function Verify() {
       return setInfo('❌ Incomplete registration data.');
     }
 
+    // Hash sensitive info
     const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
     const usernameHash = sha256(username).toString();
     const emailHash = sha256(email).toString();
     const mobileHash = sha256(mobile).toString();
 
+    // Prevent duplicate voter_hash
+    const { data: existing } = await supabase
+      .from('voter')
+      .select('*')
+      .eq('voter_hash', voterHash)
+      .maybeSingle();
+
+    if (existing) {
+      localStorage.removeItem('pending_registration');
+      sessionStorage.setItem('voterData', JSON.stringify(existing));
+      return router.push('/dashboard');
+    }
+
+    // Save user
     const { error: insertError } = await supabase.from('voter').insert([{
       username,
-      email: null,
+      email: null, // hashed instead
       mobile: null,
       county,
       subcounty,
@@ -76,8 +86,19 @@ export default function Verify() {
 
     if (insertError) {
       console.error('Insert error:', insertError);
-      return setInfo('❌ Could not save your record. Contact support.');
+      return setInfo('❌ Failed to save your record. Contact support.');
     }
+
+    // Store session
+    sessionStorage.setItem('voterData', JSON.stringify({
+      username,
+      county,
+      subcounty,
+      ward,
+      polling_centre,
+      email_hash: emailHash,
+      voter_hash: voterHash,
+    }));
 
     localStorage.removeItem('pending_registration');
     setInfo('✅ Registration complete! Redirecting...');
@@ -100,7 +121,7 @@ export default function Verify() {
       .maybeSingle();
 
     if (error) {
-      setInfo('❌ Error checking resend count.');
+      setInfo('❌ Error checking resend.');
       setResending(false);
       return;
     }
@@ -113,9 +134,8 @@ export default function Verify() {
       return;
     }
 
-    let otp = otpRecord?.otp || Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = otpRecord?.otp || Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Only insert if new OTP was generated
     if (!otpRecord) {
       const { error: insertError } = await supabase
         .from('otp_verification')
@@ -123,10 +143,9 @@ export default function Verify() {
       if (insertError) {
         console.error('OTP Insert Error:', insertError);
         setResending(false);
-        return setInfo('❌ Failed to create new OTP.');
+        return setInfo('❌ Failed to create OTP.');
       }
     } else {
-      // Update resend count
       resendCount += 1;
       const { error: updateError } = await supabase
         .from('otp_verification')
@@ -135,7 +154,7 @@ export default function Verify() {
       if (updateError) {
         console.error('OTP Update Error:', updateError);
         setResending(false);
-        return setInfo('❌ Failed to update resend count.');
+        return setInfo('❌ Failed to update count.');
       }
     }
 
@@ -148,13 +167,10 @@ export default function Verify() {
         'OrOyy74P28MfrgPhr'
       );
 
-      setInfo(resendCount === 3
-        ? '⚠️ OTP resent. Final attempt.'
-        : '✅ OTP resent successfully.');
-
+      setInfo(resendCount === 3 ? '⚠️ OTP resent. Final attempt.' : '✅ OTP resent successfully.');
       setCountdown(60);
     } catch (err) {
-      console.error('EmailJS resend error:', err);
+      console.error('EmailJS error:', err);
       setInfo('❌ Failed to send OTP.');
     }
 
@@ -184,7 +200,12 @@ export default function Verify() {
         {countdown > 0 ? `Wait ${countdown}s` : 'Resend OTP'}
       </button>
 
-      {info && <p style={{ marginTop: 20, color: info.startsWith('✅') || info.startsWith('⚠️') ? 'green' : 'red' }}>{info}</p>}
+      {info && (
+        <p style={{
+          marginTop: 20,
+          color: info.startsWith('✅') || info.startsWith('⚠️') ? 'green' : 'red'
+        }}>{info}</p>
+      )}
     </div>
   );
 }
