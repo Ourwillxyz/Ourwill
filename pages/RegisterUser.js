@@ -93,8 +93,7 @@ const RegisterUser = () => {
     const fullMobile = `254${mobile}`;
     setInfo('⏳ Checking credentials...');
 
-    // Check if user already exists
-    const { data: existingUser, error } = await supabase
+    const { data: existingUser } = await supabase
       .from('users')
       .select('email, username, mobile')
       .or(`email.eq.${email},username.eq.${username},mobile.eq.${fullMobile}`);
@@ -145,7 +144,11 @@ const RegisterUser = () => {
 
   return (
     <div style={{ maxWidth: 540, margin: '2rem auto', padding: 24, border: '1px solid #ddd', borderRadius: 10 }}>
+      <div style={{ textAlign: 'center', marginBottom: 16 }}>
+        <Image src="/kenya-flag.png" alt="Kenya Flag" width={120} height={70} style={{ opacity: 0.85 }} />
+      </div>
       <Image src={logo} alt="OurWill Logo" width={140} />
+
       <form onSubmit={handleRegister} style={{ marginTop: 16 }}>
         <input
           type="text"
