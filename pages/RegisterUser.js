@@ -105,7 +105,7 @@ export default function RegisterUser() {
 
   const handleSendOTP = async () => {
     setLoading(true);
-    const { error } = await supabase.from('voters').insert([formData]);
+    const { error } = await supabase.from('voter').insert([formData]);
     if (!error) {
       setMessage('OTP sent to your mobile/email');
       setOtpSent(true);
