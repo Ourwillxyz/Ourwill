@@ -93,7 +93,15 @@ const RegisterUser = () => {
     const fullMobile = `254${mobile}`;
     setInfo('⏳ Checking credentials...');
 
-    // Optionally add uniqueness logic here (email/mobile/username)
+    // Check if user already exists
+    const { data: existingUser, error } = await supabase
+      .from('users')
+      .select('email, username, mobile')
+      .or(`email.eq.${email},username.eq.${username},mobile.eq.${fullMobile}`);
+
+    if (existingUser && existingUser.length > 0) {
+      return setInfo('❌ Email, username, or mobile already registered.');
+    }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -116,7 +124,9 @@ const RegisterUser = () => {
       );
 
       localStorage.setItem('pending_registration', JSON.stringify({
-        email, username, mobile: fullMobile,
+        email,
+        username,
+        mobile: fullMobile,
         county: selectedCounty,
         subcounty: selectedSubcounty,
         ward: selectedWard,
@@ -163,12 +173,7 @@ const RegisterUser = () => {
           style={inputStyle}
         />
 
-        <select
-          value={selectedCounty}
-          onChange={(e) => setSelectedCounty(e.target.value)}
-          required
-          style={inputStyle}
-        >
+        <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={inputStyle}>
           <option value="">-- Select County --</option>
           {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
@@ -209,7 +214,7 @@ const RegisterUser = () => {
         <button type="submit" style={{ marginTop: 24, padding: '10px 20px', fontWeight: 'bold' }}>
           Register & Send OTP
         </button>
-      {info && <p style={{ marginTop: 16, color: info.startsWith('✅') ? 'green' : 'red' }}>{info}</p>}
+        {info && <p style={{ marginTop: 16, color: info.startsWith('✅') ? 'green' : 'red' }}>{info}</p>}
       </form>
     </div>
   );
