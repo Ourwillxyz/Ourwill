@@ -1,126 +1,134 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../src/supabaseClient';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { supabase } from '../utils/supabaseClient';
 import emailjs from 'emailjs-com';
-import sha256 from 'crypto-js/sha256';
-import Image from 'next/image';
-import logo from '../public/ourwill-logo.png';
 
-const RegisterUser = () => {
+export default function RegisterUser() {
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    county: '',
+    subcounty: '',
+    ward: '',
+    polling_centre: ''
+  });
+  const [info, setInfo] = useState('');
+  const [resendWarning, setResendWarning] = useState('');
+  const [resendDisabled, setResendDisabled] = useState(false);
   const [counties, setCounties] = useState([]);
   const [subcounties, setSubcounties] = useState([]);
   const [wards, setWards] = useState([]);
   const [pollingCentres, setPollingCentres] = useState([]);
+  const router = useRouter();
 
-  const [selectedCounty, setSelectedCounty] = useState('');
-  const [selectedSubcounty, setSelectedSubcounty] = useState('');
-  const [selectedWard, setSelectedWard] = useState('');
-  const [selectedPollingCentre, setSelectedPollingCentre] = useState('');
-
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [info, setInfo] = useState('');
-
-  // Fetch dropdown data
   useEffect(() => {
-    const fetchCounties = async () => {
-      const { data } = await supabase.from('counties').select('*').order('name');
-      if (data) setCounties(data);
-    };
     fetchCounties();
   }, []);
 
   useEffect(() => {
-    const fetchSubcounties = async () => {
-      const { data } = await supabase
-        .from('subcounties')
-        .select('*')
-        .eq('county_code', selectedCounty)
-        .order('name');
-      setSubcounties(data || []);
-    };
-    if (selectedCounty) fetchSubcounties();
-    setSelectedSubcounty('');
-    setSelectedWard('');
-    setSelectedPollingCentre('');
-    setWards([]);
-    setPollingCentres([]);
-  }, [selectedCounty]);
+    if (form.county) fetchSubcounties(form.county);
+    setForm(prev => ({ ...prev, subcounty: '', ward: '', polling_centre: '' }));
+  }, [form.county]);
 
   useEffect(() => {
-    const fetchWards = async () => {
-      const { data } = await supabase
-        .from('wards')
-        .select('*')
-        .eq('subcounty_code', selectedSubcounty)
-        .order('name');
-      setWards(data || []);
-    };
-    if (selectedSubcounty) fetchWards();
-    setSelectedWard('');
-    setSelectedPollingCentre('');
-    setPollingCentres([]);
-  }, [selectedSubcounty]);
+    if (form.subcounty) fetchWards(form.subcounty);
+    setForm(prev => ({ ...prev, ward: '', polling_centre: '' }));
+  }, [form.subcounty]);
 
   useEffect(() => {
-    const fetchPolling = async () => {
-      const { data } = await supabase
-        .from('polling_centres')
-        .select('*')
-        .eq('ward_code', selectedWard)
-        .order('name');
-      setPollingCentres(data || []);
-    };
-    if (selectedWard) fetchPolling();
-    setSelectedPollingCentre('');
-  }, [selectedWard]);
+    if (form.ward) fetchPollingCentres(form.ward);
+    setForm(prev => ({ ...prev, polling_centre: '' }));
+  }, [form.ward]);
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const fetchCounties = async () => {
+    const { data } = await supabase.from('counties').select('name');
+    setCounties(data || []);
+  };
 
-    if (!username.trim()) return setInfo('❌ Please enter a username.');
-    if (!/\S+@\S+\.\S+/.test(email)) return setInfo('❌ Please enter a valid email.');
-    if (!/^\d{9}$/.test(mobile)) return setInfo('❌ Enter a valid 9-digit mobile number.');
-    if (!selectedCounty || !selectedSubcounty || !selectedWard || !selectedPollingCentre) {
-      return setInfo('❌ Please select your full location.');
-    }
+  const fetchSubcounties = async (county) => {
+    const { data } = await supabase
+      .from('subcounties')
+      .select('name')
+      .eq('county_name', county);
+    setSubcounties(data || []);
+  };
 
-    const fullMobile = `254${mobile}`;
-    const emailHash = sha256(email.trim().toLowerCase()).toString();
-    const mobileHash = sha256(fullMobile).toString();
-    const usernameHash = sha256(username.trim().toLowerCase()).toString();
+  const fetchWards = async (subcounty) => {
+    const { data } = await supabase
+      .from('wards')
+      .select('name')
+      .eq('subcounty_name', subcounty);
+    setWards(data || []);
+  };
 
-    setInfo('⏳ Checking existing voter...');
+  const fetchPollingCentres = async (ward) => {
+    const { data } = await supabase
+      .from('polling_centres')
+      .select('name')
+      .eq('ward_name', ward);
+    setPollingCentres(data || []);
+  };
 
-    const { data: existing } = await supabase
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const checkDuplicate = async () => {
+    const { data } = await supabase
       .from('voter')
       .select('id')
-      .or(`email_hash.eq.${emailHash},mobile_hash.eq.${mobileHash},username_hash.eq.${usernameHash}`)
-      .maybeSingle();
+      .or(`email.eq.${form.email},mobile.eq.${form.mobile}`);
+    return data?.length > 0;
+  };
 
-    if (existing) {
-      return setInfo('❌ This email, mobile, or username is already in use.');
+  const checkResendLimit = async (userEmail) => {
+    const { data } = await supabase
+      .from('resend_logs')
+      .select('id')
+      .eq('email', userEmail)
+      .gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
+
+    if (data?.length >= 3) {
+      setResendDisabled(true);
+      setResendWarning('⛔ You have reached the maximum OTP resends (3 in 10 minutes). Please try later.');
+      return false;
+    } else if (data?.length === 2) {
+      setResendWarning('⚠️ Warning: Only one more OTP resend allowed in 10 minutes.');
     }
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setInfo('');
+    setResendWarning('');
+    setResendDisabled(false);
+
+    const duplicate = await checkDuplicate();
+    if (duplicate) {
+      return setInfo('❌ Email or mobile already registered.');
+    }
+
+    const otpAllowed = await checkResendLimit(form.email);
+    if (!otpAllowed) return;
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    const { error: otpError } = await supabase.from('otp_verification').insert([
-      {
-        email,
-        otp,
-        used: false,
-      },
-    ]);
-
-    if (otpError) {
-      console.error('❌ OTP Save Error:', otpError);
-      return setInfo('❌ Failed to save OTP code.');
+    const { error: voterError } = await supabase.from('voter').insert([form]);
+    if (voterError) {
+      return setInfo('❌ Failed to register voter.');
     }
 
-    try {
-      const now = new Date().toLocaleString();
-      await emailjs.send(
-        'service_21itetw',
+    const { error: otpError } = await supabase.from('otp_verification').insert([
+      { email: form.email, otp, used: false }
+    ]);
+    if (otpError) {
+      return setInfo('❌ Failed to save OTP.');
+    }
+
+    const emailResult = await emailjs.send(
+      'service_21itetw',
         'template_ks69v69',
         {
           email,
@@ -128,81 +136,59 @@ const RegisterUser = () => {
           time: now,
         },
         'OrOyy74P28MfrgPhr'
-      );
 
-      localStorage.setItem('pending_registration', JSON.stringify({
-        email,
-        username,
-        mobile: fullMobile,
-        county: selectedCounty,
-        subcounty: selectedSubcounty,
-        ward: selectedWard,
-        polling_centre: selectedPollingCentre,
-      }));
+    );
 
-      setInfo('✅ OTP sent. Redirecting to verification...');
-      setTimeout(() => {
-        window.location.href = '/verify';
-      }, 1500);
-    } catch (err) {
-      console.error('❌ EmailJS error:', err);
-      setInfo('❌ Failed to send OTP email.');
+    if (emailResult.status !== 200) {
+      return setInfo('❌ Failed to send OTP email.');
     }
+
+    await supabase.from('resend_logs').insert([{ email: form.email }]);
+    localStorage.setItem('voterEmail', form.email);
+    router.push('/verify');
   };
 
   return (
-    <div style={{
-      maxWidth: 540,
-      margin: '2rem auto',
-      padding: 24,
-      textAlign: 'center',
-      border: '1px solid #ddd',
-      borderRadius: 10,
-      backgroundImage: 'url(/kenya-flag.jpg)',
-      backgroundSize: '200%',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      backgroundColor: 'rgba(255,255,255,0.7)',
-      backgroundBlendMode: 'overlay',
-      boxShadow: '0 0 12px rgba(0,0,0,0.3)',
-    }}>
-      <Image src={logo} alt="OurWill Logo" width={140} />
-      <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
-        <input type="text" placeholder="Unique Username" value={username} onChange={(e) => setUsername(e.target.value)} required style={inputStyle} />
-        <input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
-        <input type="tel" placeholder="Mobile (712345678)" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/, ''))} maxLength={9} required style={inputStyle} />
+    <div className="container">
+      <h2>Register to Vote</h2>
+      <form onSubmit={handleSubmit}>
+        <input type="text" name="name" placeholder="Full Name" value={form.name} onChange={handleChange} required />
+        <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} required />
+        <input type="tel" name="mobile" placeholder="Mobile (e.g. 712345678)" value={form.mobile} onChange={handleChange} required />
 
-        <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)} required style={inputStyle}>
-          <option value="">-- Select County --</option>
-          {counties.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+        <select name="county" value={form.county} onChange={handleChange} required>
+          <option value="">Select County</option>
+          {counties.map((c, i) => (
+            <option key={i} value={c.name}>{c.name}</option>
+          ))}
         </select>
 
-        <select value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)} required disabled={!selectedCounty} style={inputStyle}>
-          <option value="">-- Select Subcounty --</option>
-          {subcounties.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+        <select name="subcounty" value={form.subcounty} onChange={handleChange} required>
+          <option value="">Select Subcounty</option>
+          {subcounties.map((sc, i) => (
+            <option key={i} value={sc.name}>{sc.name}</option>
+          ))}
         </select>
 
-        <select value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} required disabled={!selectedSubcounty} style={inputStyle}>
-          <option value="">-- Select Ward --</option>
-          {wards.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
+        <select name="ward" value={form.ward} onChange={handleChange} required>
+          <option value="">Select Ward</option>
+          {wards.map((w, i) => (
+            <option key={i} value={w.name}>{w.name}</option>
+          ))}
         </select>
 
-        <select value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)} required disabled={!selectedWard} style={inputStyle}>
-          <option value="">-- Select Polling Centre --</option>
-          {pollingCentres.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+        <select name="polling_centre" value={form.polling_centre} onChange={handleChange} required>
+          <option value="">Select Polling Centre</option>
+          {pollingCentres.map((p, i) => (
+            <option key={i} value={p.name}>{p.name}</option>
+          ))}
         </select>
 
-        <button type="submit" style={{ marginTop: 16, padding: '10px 20px', fontWeight: 'bold' }}>Register</button>
-        {info && <p style={{ marginTop: 20, color: info.startsWith('✅') ? 'green' : info.startsWith('❌') ? 'red' : '#333' }}>{info}</p>}
+        <button type="submit" disabled={resendDisabled}>Register & Send OTP</button>
       </form>
+
+      {resendWarning && <p style={{ color: 'orange' }}>{resendWarning}</p>}
+      {info && <p>{info}</p>}
     </div>
   );
-};
-
-const inputStyle = {
-  width: '90%',
-  padding: 10,
-  margin: '10px 0'
-};
-
-export default RegisterUser;
+}
