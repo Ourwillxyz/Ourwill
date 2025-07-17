@@ -1,8 +1,10 @@
-// pages/RegisterUser.js
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 
 export default function RegisterUser() {
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     email: '',
     mobile: '',
@@ -91,7 +93,10 @@ export default function RegisterUser() {
   const handleVerifyOTP = async () => {
     setLoading(true);
     if (otp === '123456') {
-      setMessage('Registration complete!');
+      setMessage('Registration complete! Redirecting...');
+      setTimeout(() => {
+        router.push('/Login');
+      }, 2000);
     } else {
       setMessage('Invalid OTP');
     }
