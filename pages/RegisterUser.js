@@ -1,192 +1,217 @@
-// src/pages/RegisterUser.js
-import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+// pages/RegisterUser.js
+import { useState, useEffect } from 'react';
+import { supabase } from '../src/supabaseClient';
 
 export default function RegisterUser() {
+  const [formData, setFormData] = useState({
+    email: '',
+    mobile: '',
+    county: '',
+    subcounty: '',
+    ward: '',
+    polling_centre: '',
+  });
+
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const [counties, setCounties] = useState([]);
   const [subcounties, setSubcounties] = useState([]);
   const [wards, setWards] = useState([]);
   const [pollingCentres, setPollingCentres] = useState([]);
 
-  const [selectedCounty, setSelectedCounty] = useState("");
-  const [selectedSubcounty, setSelectedSubcounty] = useState("");
-  const [selectedWard, setSelectedWard] = useState("");
-  const [selectedPollingCentre, setSelectedPollingCentre] = useState("");
-
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-  });
-
-  const [statusMessage, setStatusMessage] = useState("");
-
-  // Load counties
   useEffect(() => {
     const fetchCounties = async () => {
-      const { data, error } = await supabase.from("counties").select("*");
-      if (error) console.error("Error fetching counties:", error);
-      else setCounties(data);
+      const { data, error } = await supabase
+        .from('counties')
+        .select('name')
+        .order('name');
+      if (data) setCounties(data.map(d => d.name));
     };
     fetchCounties();
   }, []);
 
-  // Load subcounties
   useEffect(() => {
-    if (!selectedCounty) return;
     const fetchSubcounties = async () => {
-      const { data, error } = await supabase
-        .from("subcounties")
-        .select("*")
-        .eq("county_code", selectedCounty);
-      if (error) console.error("Error fetching subcounties:", error);
-      else setSubcounties(data);
+      if (!formData.county) return;
+      const { data } = await supabase
+        .from('subcounties')
+        .select('name')
+        .eq('county_name', formData.county)
+        .order('name');
+      if (data) setSubcounties(data.map(d => d.name));
     };
     fetchSubcounties();
-  }, [selectedCounty]);
+  }, [formData.county]);
 
-  // Load wards
   useEffect(() => {
-    if (!selectedSubcounty) return;
     const fetchWards = async () => {
-      const { data, error } = await supabase
-        .from("wards")
-        .select("*")
-        .eq("subcounty_code", selectedSubcounty);
-      if (error) console.error("Error fetching wards:", error);
-      else setWards(data);
+      if (!formData.subcounty) return;
+      const { data } = await supabase
+        .from('wards')
+        .select('name')
+        .eq('subcounty_name', formData.subcounty)
+        .order('name');
+      if (data) setWards(data.map(d => d.name));
     };
     fetchWards();
-  }, [selectedSubcounty]);
+  }, [formData.subcounty]);
 
-  // Load polling centres
   useEffect(() => {
-    if (!selectedWard) return;
     const fetchPollingCentres = async () => {
-      const { data, error } = await supabase
-        .from("polling_centres")
-        .select("*")
-        .eq("ward_code", selectedWard);
-      if (error) console.error("Error fetching polling centres:", error);
-      else setPollingCentres(data);
+      if (!formData.ward) return;
+      const { data } = await supabase
+        .from('polling_centres')
+        .select('name')
+        .eq('ward_name', formData.ward)
+        .order('name');
+      if (data) setPollingCentres(data.map(d => d.name));
     };
     fetchPollingCentres();
-  }, [selectedWard]);
+  }, [formData.ward]);
 
-  const handleInputChange = (e) => {
+  const handleChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setStatusMessage("Registering...");
-
-    const { name, email, phone } = formData;
-
-    const { error } = await supabase.from("voter").insert([
-      {
-        name,
-        email,
-        phone,
-        county_code: selectedCounty,
-        subcounty_code: selectedSubcounty,
-        ward_code: selectedWard,
-        polling_centre_code: selectedPollingCentre,
-      },
-    ]);
-
-    if (error) {
-      console.error("Registration error:", error);
-      setStatusMessage("❌ Failed to register. Please try again.");
+  const handleSendOTP = async () => {
+    setLoading(true);
+    const { error } = await supabase.from('voters').insert([formData]);
+    if (!error) {
+      setMessage('OTP sent to your mobile/email');
+      setOtpSent(true);
     } else {
-      setStatusMessage("✅ Successfully registered!");
-      setFormData({ name: "", email: "", phone: "" });
-      setSelectedCounty("");
-      setSelectedSubcounty("");
-      setSelectedWard("");
-      setSelectedPollingCentre("");
+      setMessage('Failed to register. Please try again.');
     }
+    setLoading(false);
+  };
+
+  const handleVerifyOTP = async () => {
+    setLoading(true);
+    if (otp === '123456') {
+      setMessage('Registration complete!');
+    } else {
+      setMessage('Invalid OTP');
+    }
+    setLoading(false);
   };
 
   return (
-    <div style={{ maxWidth: 600, margin: "auto", padding: "1rem" }}>
-      {/* App Logo and Flag */}
-      <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-        <img src="/logo.png" alt="OurWill Logo" style={{ height: 60 }} />
-        <img src="/flag.png" alt="Kenya Flag" style={{ height: 40, opacity: 0.6, marginTop: 10 }} />
+    <div style={styles.wrapper}>
+      <div style={styles.overlay}>
+        <div style={styles.container}>
+          <h2 style={{ marginBottom: '1rem' }}>Voter Registration</h2>
+
+          <input
+            name="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            style={styles.input}
+          />
+          <input
+            name="mobile"
+            placeholder="Mobile (e.g. 0712345678)"
+            value={formData.mobile}
+            onChange={handleChange}
+            style={styles.input}
+          />
+
+          <select name="county" value={formData.county} onChange={handleChange} style={styles.input}>
+            <option value="">Select County</option>
+            {counties.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+
+          <select name="subcounty" value={formData.subcounty} onChange={handleChange} style={styles.input}>
+            <option value="">Select Subcounty</option>
+            {subcounties.map((sc) => (
+              <option key={sc} value={sc}>{sc}</option>
+            ))}
+          </select>
+
+          <select name="ward" value={formData.ward} onChange={handleChange} style={styles.input}>
+            <option value="">Select Ward</option>
+            {wards.map((w) => (
+              <option key={w} value={w}>{w}</option>
+            ))}
+          </select>
+
+          <select name="polling_centre" value={formData.polling_centre} onChange={handleChange} style={styles.input}>
+            <option value="">Select Polling Centre</option>
+            {pollingCentres.map((pc) => (
+              <option key={pc} value={pc}>{pc}</option>
+            ))}
+          </select>
+
+          {!otpSent ? (
+            <button onClick={handleSendOTP} style={styles.button} disabled={loading}>
+              {loading ? 'Sending OTP...' : 'Register'}
+            </button>
+          ) : (
+            <>
+              <input
+                name="otp"
+                placeholder="Enter OTP"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                style={styles.input}
+              />
+              <button onClick={handleVerifyOTP} style={styles.button} disabled={loading}>
+                {loading ? 'Verifying...' : 'Verify OTP'}
+              </button>
+            </>
+          )}
+
+          {message && <p style={{ marginTop: '1rem' }}>{message}</p>}
+        </div>
       </div>
-
-      <h2 style={{ textAlign: "center" }}>Register as a Voter</h2>
-      <form onSubmit={handleRegister}>
-        <input
-          type="text"
-          name="name"
-          placeholder="Full Name"
-          value={formData.name}
-          onChange={handleInputChange}
-          required
-          style={{ width: "100%", marginBottom: 10 }}
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleInputChange}
-          required
-          style={{ width: "100%", marginBottom: 10 }}
-        />
-        <input
-          type="tel"
-          name="phone"
-          placeholder="Phone"
-          value={formData.phone}
-          onChange={handleInputChange}
-          required
-          style={{ width: "100%", marginBottom: 10 }}
-        />
-
-        <select required value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)}>
-          <option value="">Select County</option>
-          {counties.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
-        <select required value={selectedSubcounty} onChange={(e) => setSelectedSubcounty(e.target.value)}>
-          <option value="">Select Subcounty</option>
-          {subcounties.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-
-        <select required value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)}>
-          <option value="">Select Ward</option>
-          {wards.map((w) => (
-            <option key={w.code} value={w.code}>
-              {w.name}
-            </option>
-          ))}
-        </select>
-
-        <select required value={selectedPollingCentre} onChange={(e) => setSelectedPollingCentre(e.target.value)}>
-          <option value="">Select Polling Centre</option>
-          {pollingCentres.map((p) => (
-            <option key={p.code} value={p.code}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-
-        <button type="submit" style={{ width: "100%", marginTop: 10 }}>
-          Register
-        </button>
-      </form>
-      {statusMessage && <p style={{ textAlign: "center", marginTop: 10 }}>{statusMessage}</p>}
     </div>
   );
 }
+
+const styles = {
+  wrapper: {
+    backgroundImage: "url('/kenya-flag.jpg')",
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    minHeight: '100vh',
+    minWidth: '100vw',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlay: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: '2rem',
+    borderRadius: '12px',
+    width: '90%',
+    maxWidth: '420px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+  },
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  input: {
+    width: '100%',
+    padding: '0.6rem',
+    marginBottom: '1rem',
+    borderRadius: '6px',
+    border: '1px solid #ccc',
+  },
+  button: {
+    width: '100%',
+    padding: '0.8rem',
+    backgroundColor: '#006400',
+    color: 'white',
+    fontWeight: 'bold',
+    borderRadius: '6px',
+    border: 'none',
+    cursor: 'pointer',
+  },
+};
