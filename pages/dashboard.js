@@ -1,75 +1,85 @@
-// pages/dashboard.js
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../src/supabaseClient';
+import { useEffect, useState } from 'react';
+
+const dummyUser = {
+  email: 'user@example.com',
+  county: 'Mombasa',
+  subcounty: 'Mvita',
+  ward: 'Tudor Ward',
+};
+
+const dummyVotes = [
+  {
+    id: '1',
+    title: 'Governor Mombasa Recall Vote',
+    description: 'Vote to decide if the current Governor should be recalled.',
+    status: 'closed',
+    target: 'Tudor Ward',
+  },
+  {
+    id: '2',
+    title: 'Youth Climate Action Bill Referendum',
+    description: 'Referendum on the Climate Action Bill by Gen Z activists.',
+    status: 'ongoing',
+    target: 'All Wards',
+  },
+  {
+    id: '3',
+    title: 'Constitutional Amendment Poll',
+    description: 'Vote on proposed constitutional amendments regarding IEBC.',
+    status: 'upcoming',
+    target: 'Westlands Ward',
+  },
+];
 
 export default function Dashboard() {
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const voterHash = localStorage.getItem('voter_hash');
-
-      if (!voterHash) {
-        router.push('/');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('voter')
-        .select('*')
-        .eq('voter_hash', voterHash)
-        .maybeSingle();
-
-      if (error || !data) {
-        router.push('/');
-        return;
-      }
-
-      setUserData(data);
-      setLoading(false);
-    };
-
-    fetchUser();
+    // Replace this with real auth/session check
+    const session = localStorage.getItem('ourwill_voter');
+    if (!session) {
+      router.push('/'); // redirect to homepage or login
+    } else {
+      setUser(JSON.parse(session));
+    }
   }, []);
 
-  if (loading) return <p style={{ textAlign: 'center', marginTop: '20%' }}>Loading Dashboard...</p>;
+  const handleLogout = () => {
+    localStorage.removeItem('ourwill_voter');
+    router.push('/');
+  };
 
-  const formattedNextElection = 'Sunday, 10 August 2025 at 08:00 AM';
+  if (!user) return <div>Loading dashboard...</div>;
 
   return (
-    <div style={{ padding: '2rem', maxWidth: 800, margin: 'auto' }}>
-      <h2>Welcome to Your Voter Dashboard</h2>
-      <p style={{ fontSize: 16 }}>Your registration has been verified successfully.</p>
+    <div style={{ padding: '20px', fontFamily: 'Arial' }}>
+      <h2>Welcome to OurWill Dashboard</h2>
+      <p><strong>Email:</strong> {user.email}</p>
+      <p><strong>Location:</strong> {user.ward}, {user.subcounty}, {user.county}</p>
 
-      <div style={{ marginTop: 30, padding: 20, border: '1px solid #ccc', borderRadius: 8 }}>
-        <h3>Your Voter Information</h3>
-        <ul>
-          <li><strong>Email:</strong> {userData.email_hash ? 'Hidden (Hashed)' : 'N/A'}</li>
-          <li><strong>County:</strong> {userData.county}</li>
-          <li><strong>Subcounty:</strong> {userData.subcounty}</li>
-          <li><strong>Ward:</strong> {userData.ward}</li>
-          <li><strong>Polling Centre:</strong> {userData.polling_centre}</li>
-        </ul>
-      </div>
+      <h3>Your Voting Activity</h3>
+      <ul>
+        {dummyVotes.map((vote) => (
+          <li key={vote.id} style={{ marginBottom: '10px' }}>
+            <strong>{vote.title}</strong> <br />
+            <em>{vote.description}</em><br />
+            <strong>Status:</strong> {vote.status.toUpperCase()} | <strong>Target:</strong> {vote.target}
+          </li>
+        ))}
+      </ul>
 
-      <div style={{ marginTop: 30 }}>
-        <h3>🗳️ Last Voting Results</h3>
-        <p>Last vote you participated in: <em>Data coming soon</em></p>
-      </div>
-
-      <div style={{ marginTop: 30 }}>
-        <h3>✅ Ongoing Voting</h3>
-        <p>No active votes at the moment.</p>
-      </div>
-
-      <div style={{ marginTop: 30 }}>
-        <h3>📅 Upcoming Voting Notices</h3>
-        <p>Next scheduled vote: <strong>{formattedNextElection}</strong></p>
-      </div>
+      <button onClick={handleLogout} style={{
+        marginTop: '20px',
+        padding: '10px 20px',
+        background: 'darkred',
+        color: 'white',
+        border: 'none',
+        cursor: 'pointer'
+      }}>
+        Logout
+      </button>
     </div>
   );
 }
