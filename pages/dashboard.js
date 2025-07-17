@@ -1,85 +1,77 @@
-import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-
-const dummyUser = {
-  email: 'user@example.com',
-  county: 'Mombasa',
-  subcounty: 'Mvita',
-  ward: 'Tudor Ward',
-};
-
-const dummyVotes = [
-  {
-    id: '1',
-    title: 'Governor Mombasa Recall Vote',
-    description: 'Vote to decide if the current Governor should be recalled.',
-    status: 'closed',
-    target: 'Tudor Ward',
-  },
-  {
-    id: '2',
-    title: 'Youth Climate Action Bill Referendum',
-    description: 'Referendum on the Climate Action Bill by Gen Z activists.',
-    status: 'ongoing',
-    target: 'All Wards',
-  },
-  {
-    id: '3',
-    title: 'Constitutional Amendment Poll',
-    description: 'Vote on proposed constitutional amendments regarding IEBC.',
-    status: 'upcoming',
-    target: 'Westlands Ward',
-  },
-];
+import { useRouter } from 'next/router';
+import { supabase } from '../src/supabaseClient';
 
 export default function Dashboard() {
-  const router = useRouter();
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    // Replace this with real auth/session check
-    const session = localStorage.getItem('ourwill_voter');
-    if (!session) {
-      router.push('/'); // redirect to homepage or login
+    const voterData = JSON.parse(localStorage.getItem('voter_session'));
+    if (!voterData) {
+      router.push('/RegisterUser');
     } else {
-      setUser(JSON.parse(session));
+      setUser(voterData);
+      setLoading(false);
     }
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('ourwill_voter');
-    router.push('/');
+    localStorage.removeItem('voter_session');
+    router.push('/RegisterUser');
   };
 
-  if (!user) return <div>Loading dashboard...</div>;
+  if (loading) return <p style={{ textAlign: 'center', marginTop: 100 }}>⏳ Loading dashboard...</p>;
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-      <h2>Welcome to OurWill Dashboard</h2>
-      <p><strong>Email:</strong> {user.email}</p>
-      <p><strong>Location:</strong> {user.ward}, {user.subcounty}, {user.county}</p>
+    <div style={{ maxWidth: 800, margin: '3rem auto', padding: 24 }}>
+      <h1>🎉 Welcome, {user?.username || 'Voter'}!</h1>
 
-      <h3>Your Voting Activity</h3>
-      <ul>
-        {dummyVotes.map((vote) => (
-          <li key={vote.id} style={{ marginBottom: '10px' }}>
-            <strong>{vote.title}</strong> <br />
-            <em>{vote.description}</em><br />
-            <strong>Status:</strong> {vote.status.toUpperCase()} | <strong>Target:</strong> {vote.target}
-          </li>
-        ))}
-      </ul>
+      <section style={{ marginTop: 30 }}>
+        <h2>📌 Your Details</h2>
+        <ul>
+          <li><strong>Email:</strong> {user.email || 'N/A'}</li>
+          <li><strong>County:</strong> {user.county}</li>
+          <li><strong>Subcounty:</strong> {user.subcounty}</li>
+          <li><strong>Ward:</strong> {user.ward}</li>
+          <li><strong>Polling Centre:</strong> {user.polling_centre}</li>
+        </ul>
+      </section>
 
-      <button onClick={handleLogout} style={{
-        marginTop: '20px',
-        padding: '10px 20px',
-        background: 'darkred',
-        color: 'white',
-        border: 'none',
-        cursor: 'pointer'
-      }}>
-        Logout
-      </button>
+      <section style={{ marginTop: 30 }}>
+        <h2>📊 Last Voting Summary</h2>
+        <p>You voted in the 2025 County Youth Budget Poll.</p>
+        <p><strong>Option Chosen:</strong> Increased bursaries</p>
+        <p><strong>Date:</strong> July 5, 2025</p>
+      </section>
+
+      <section style={{ marginTop: 30 }}>
+        <h2>🗳️ Ongoing Voting</h2>
+        <p><strong>Poll:</strong> Youth Empowerment Program Preferences</p>
+        <p><strong>Status:</strong> Open until July 20, 2025</p>
+        <button style={{ marginTop: 10, padding: '8px 16px' }}>Vote Now</button>
+      </section>
+
+      <section style={{ marginTop: 30 }}>
+        <h2>📅 Upcoming Notices</h2>
+        <ul>
+          <li>📌 County Development Fund Vote - Opens August 10, 2025</li>
+          <li>📌 Public Transport Safety Review Vote - Opens September 1, 2025</li>
+        </ul>
+      </section>
+
+      <div style={{ marginTop: 50 }}>
+        <button onClick={handleLogout} style={{
+          backgroundColor: '#e53935',
+          color: 'white',
+          padding: '10px 20px',
+          border: 'none',
+          cursor: 'pointer'
+        }}>
+          🚪 Logout
+        </button>
+      </div>
     </div>
   );
 }
