@@ -90,14 +90,29 @@ export default function VerifyOtp() {
           return;
         }
       }
+
+      setSuccessMsg('Verification successful! You are now registered.');
+      setLoading(false);
+
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+    } else if (mode === 'login') {
+      setSuccessMsg('Login successful! Redirecting to dashboard...');
+      setLoading(false);
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
+    } else {
+      // fallback, redirect to login
+      setSuccessMsg('Verification successful.');
+      setLoading(false);
+
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
     }
-
-    setSuccessMsg('Verification successful! You are now registered.');
-    setLoading(false);
-
-    setTimeout(() => {
-      router.push('/login'); // or wherever you want to redirect
-    }, 2000);
   };
 
   return (
