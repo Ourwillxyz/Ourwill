@@ -13,16 +13,16 @@ export default function Verify() {
   const [successMsg, setSuccessMsg] = useState('');
   const [resending, setResending] = useState(false);
 
+  // Verify OTP handler
   const handleVerify = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Hash the OTP input
     const otp_hash = sha256(otp).toString();
 
-    // Find voter by email and hashed OTP
+    // Query voter by email and hashed OTP
     const { data: voter, error: findError } = await supabase
       .from('voter')
       .select('*')
@@ -48,16 +48,18 @@ export default function Verify() {
       return;
     }
 
-    setSuccessMsg('OTP verified! Logging you in...');
+    setSuccessMsg('OTP verified! Redirecting to login...');
     setLoading(false);
 
     setTimeout(() => {
-      router.replace('/dashboard');
-    }, 1000);
+      router.replace('/login');
+    }, 1200);
   };
 
+  // Generate a 6-digit OTP
   const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+  // Resend OTP handler
   const handleResendOtp = async () => {
     setResending(true);
     setErrorMsg('');
