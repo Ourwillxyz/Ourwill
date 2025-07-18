@@ -31,19 +31,20 @@ export default function Verify() {
     }
   }, [resendTimer, canResend]);
 
-  // Simulate fetching the OTP sent to the user (in real app, never expose OTP client-side)
-  // For demo, we check the last OTP sent stored in Supabase for this email
+  // OTP verification
   async function verifyOtp() {
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Simulate: fetch the pending voter entry by email
+    // Fetch the latest unused OTP for this email
     const { data, error } = await supabase
-      .from('voter')
-      .select('otp, status')
+      .from('otp_verification')
+      .select('otp, used')
       .eq('email', email)
-      .eq('status', 'pending')
+      .eq('used', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (error || !data) {
@@ -58,11 +59,12 @@ export default function Verify() {
       return;
     }
 
-    // Mark user as verified
+    // Mark OTP as used
     const { error: updateError } = await supabase
-      .from('voter')
-      .update({ status: 'verified' })
-      .eq('email', email);
+      .from('otp_verification')
+      .update({ used: true })
+      .eq('email', email)
+      .eq('otp', otpInput);
 
     if (updateError) {
       setErrorMsg('Verification failed. Please try again.');
@@ -89,11 +91,29 @@ export default function Verify() {
     // Generate new OTP
     const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Update OTP in DB
+    // Insert new OTP record and increment resend count
+    const { data: lastOtp, error: lastOtpError } = await supabase
+      .from('otp_verification')
+      .select('resend_count')
+      .eq('email', email)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    let resendCount = 1;
+    if (lastOtp && lastOtp.resend_count) {
+      resendCount = lastOtp.resend_count + 1;
+    }
+
     const { error } = await supabase
-      .from('voter')
-      .update({ otp: newOtp })
-      .eq('email', email);
+      .from('otp_verification')
+      .insert({
+        email,
+        otp: newOtp,
+        used: false,
+        resend_count: resendCount,
+        created_at: new Date().toISOString(),
+      });
 
     if (error) {
       setErrorMsg('Failed to resend OTP.');
