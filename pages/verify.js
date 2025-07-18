@@ -1,31 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
-import sha256 from 'crypto-js/sha256';
 import emailjs from '@emailjs/browser';
 
 export default function Verify() {
   const router = useRouter();
-  const email = (router.query.email || '').trim(); // Trim whitespace
+  const email = (router.query.email || '').trim();
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [resending, setResending] = useState(false);
 
-  // Show email debug info
   useEffect(() => {
     console.log("Email from query:", email);
   }, [email]);
 
-  // Verify OTP handler
   const handleVerify = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Defensive: Check email is present
     if (!email) {
       setErrorMsg("Email is missing. Please register again.");
       setLoading(false);
@@ -37,17 +33,12 @@ export default function Verify() {
       return;
     }
 
-    const otp_hash = sha256(otp.trim()).toString();
-    console.log("Verifying email:", email);
-    console.log("Entered OTP:", otp);
-    console.log("Hashed OTP:", otp_hash);
-
-    // Query voter by email and hashed OTP
+    // Query voter by email and plain OTP
     const { data: voter, error: findError } = await supabase
       .from('voter')
       .select('*')
       .eq('email', email)
-      .eq('otp_hash', otp_hash)
+      .eq('otp', otp)
       .single();
 
     if (findError) {
@@ -95,12 +86,11 @@ export default function Verify() {
     }
 
     const newOtp = generateOtp();
-    const otp_hash = sha256(newOtp).toString();
 
-    // Update the user's otp_hash in the voter table
+    // Update the user's otp in the voter table
     const { error: updateError } = await supabase
       .from('voter')
-      .update({ otp_hash })
+      .update({ otp: newOtp })
       .eq('email', email);
 
     if (updateError) {
