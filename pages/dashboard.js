@@ -11,8 +11,7 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    // Get user email from localStorage/session (or use Supabase auth if set up)
-    const userEmail = JSON.parse(localStorage.getItem('voter_session'))?.email;
+    const userEmail = localStorage.getItem('user_email');
     if (!userEmail) {
       router.push('/login');
       return;
@@ -62,7 +61,7 @@ export default function Dashboard() {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem('voter_session');
+    localStorage.removeItem('user_email');
     router.push('/login');
   };
 
@@ -81,20 +80,18 @@ export default function Dashboard() {
           <li><strong>Polling Centre:</strong> {user.polling_centre || 'N/A'}</li>
         </ul>
       </section>
-
       <section style={{ marginTop: 30 }}>
         <h2>📊 Last Voting Summary</h2>
         {lastVote ? (
           <>
-            <p>You voted in: {lastVote.poll_title}</p>
-            <p><strong>Option Chosen:</strong> {lastVote.option_chosen}</p>
+            <p>You voted in: {lastVote.poll_title || lastVote.poll_id}</p>
+            <p><strong>Option Chosen:</strong> {lastVote.option_chosen || lastVote.option_id}</p>
             <p><strong>Date:</strong> {new Date(lastVote.created_at).toLocaleDateString()}</p>
           </>
         ) : (
           <p>No voting history found.</p>
         )}
       </section>
-
       <section style={{ marginTop: 30 }}>
         <h2>🗳️ Ongoing Voting</h2>
         {ongoingPoll ? (
@@ -107,7 +104,6 @@ export default function Dashboard() {
           <p>No ongoing polls at the moment.</p>
         )}
       </section>
-
       <section style={{ marginTop: 30 }}>
         <h2>📅 Upcoming Notices</h2>
         <ul>
@@ -116,7 +112,6 @@ export default function Dashboard() {
           )) : <li>No upcoming notices.</li>}
         </ul>
       </section>
-
       <div style={{ marginTop: 50 }}>
         <button onClick={handleLogout} style={{
           backgroundColor: '#e53935',
