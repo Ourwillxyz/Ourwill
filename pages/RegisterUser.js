@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
+import emailjs from '@emailjs/browser';
 import sha256 from 'crypto-js/sha256';
 
 export default function RegisterUser() {
@@ -104,7 +105,24 @@ export default function RegisterUser() {
     }));
   };
 
-  // --- Remove OTP/emailjs logic ---
+  // Generate a 6-digit OTP
+  const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Send OTP via EmailJS
+  const sendOtpEmail = async (email, otp) => {
+    try {
+      await emailjs.send(
+        'service_21itetw',
+        'template_ks69v69',
+        { email, passcode: otp },
+        'OrOyy74P28MfrgPhr'
+      );
+      return true;
+    } catch (err) {
+      setErrorMsg('Failed to send OTP email');
+      return false;
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -113,17 +131,11 @@ export default function RegisterUser() {
     setSuccessMsg('');
 
     // Check for duplicate mobile
-    const { data: existingUser, error: mobileError } = await supabase
+    const { data: existingUser } = await supabase
       .from('voter')
       .select('id')
       .eq('mobile', formData.mobile)
       .single();
-
-    if (mobileError && mobileError.details !== '0 rows returned') {
-      setErrorMsg('Database error. Please try again.');
-      setLoading(false);
-      return;
-    }
 
     if (existingUser) {
       setErrorMsg('This mobile number is already registered. Please use a different number or try logging in.');
@@ -131,25 +143,61 @@ export default function RegisterUser() {
       return;
     }
 
-    // --- KEY CHANGE: Send Supabase magic link for email verification ---
-    const { error } = await supabase.auth.signInWithOtp({
-      email: formData.email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: process.env.NEXT_PUBLIC_MAGIC_LINK_REDIRECT || 'http://localhost:3000/after-verify' // adjust as needed!
-      }
-    });
+    const otp = generateOtp();
+
+    // Hash values for security
+    const email_hash = sha256(formData.email).toString();
+    const username_hash = sha256(formData.username).toString();
+    const mobile_hash = sha256(formData.mobile).toString();
+    const voter_hash = sha256(
+      formData.username + formData.email + formData.mobile
+    ).toString();
+    const otp_hash = sha256(otp).toString();
+
+    // Store voter data with status 'pending' and save OTP hash
+    const { error } = await supabase.from('voter').insert([
+      {
+        email: formData.email,
+        mobile: formData.mobile,
+        username: formData.username,
+        county: formData.county,
+        subcounty: formData.subcounty,
+        ward: formData.ward,
+        polling_centre: formData.polling_centre,
+        email_hash,
+        username_hash,
+        mobile_hash,
+        voter_hash,
+        otp_hash,
+        status: 'pending',
+      },
+    ]);
 
     if (error) {
-      setErrorMsg('Failed to send magic link: ' + error.message);
+      setErrorMsg('Registration failed: ' + error.message);
       setLoading(false);
       return;
     }
 
-    setSuccessMsg('A magic link has been sent to your email. Please check your inbox and click the link to finish registration.');
-    setLoading(false);
+    const sent = await sendOtpEmail(formData.email, otp);
+    if (!sent) {
+      setLoading(false);
+      return;
+    }
 
-    // --- DO NOT save voter data yet! Save it after verification (in /after-verify page) ---
+    setSuccessMsg('OTP sent successfully! Redirecting to verification...');
+    setTimeout(() => {
+      router.push({
+        pathname: '/verify',
+        query: {
+          email: formData.email,
+          mobile: formData.mobile,
+          mode: 'register',
+        },
+      });
+    }, 1500);
+
+    setLoading(false);
   };
 
   return (
