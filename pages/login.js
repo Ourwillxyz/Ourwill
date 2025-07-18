@@ -35,12 +35,20 @@ export default function Login() {
     setSuccessMsg('');
     setLoading(true);
 
+    // Normalize email for lookup/storage
+    const inputEmail = email.trim().toLowerCase();
     // 1. Check if voter exists
-    const { data: voter } = await supabase
+    const { data: voter, error } = await supabase
       .from('voter')
       .select('*')
-      .eq('email', email)
+      .eq('email', inputEmail)
       .single();
+
+    if (error) {
+      setErrorMsg('Database error: ' + error.message);
+      setLoading(false);
+      return;
+    }
 
     if (!voter) {
       setErrorMsg('No voter found with this email. Please register first.');
@@ -52,7 +60,7 @@ export default function Login() {
     const otp = generateOtp();
     const { error: otpError } = await supabase.from('otp_verification').insert([
       {
-        email,
+        email: inputEmail,
         otp,
         expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 min expiry
         used: false,
@@ -66,7 +74,7 @@ export default function Login() {
     }
 
     // 3. Send OTP
-    const sent = await sendOtpEmail(email, otp);
+    const sent = await sendOtpEmail(inputEmail, otp);
     if (!sent) {
       setLoading(false);
       return;
@@ -79,7 +87,7 @@ export default function Login() {
       router.push({
         pathname: '/verify',
         query: {
-          email,
+          email: inputEmail,
           mode: 'login'
         }
       });
