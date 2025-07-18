@@ -1,172 +1,186 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
-import emailjs from '@emailjs/browser';
 
-export default function Verify() {
+export default function VerifyOtp() {
   const router = useRouter();
-  const email = (router.query.email || '').trim();
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [resending, setResending] = useState(false);
 
-  useEffect(() => {
-    console.log("Email from query:", email);
-  }, [email]);
+  // These fields should be passed from the registration step (via router.query)
+  const {
+    email = '',
+    mobile = '',
+    username = '',
+    county = '',
+    subcounty = '',
+    ward = '',
+    polling_centre = '',
+    mode = '',
+  } = router.query;
 
-  const handleVerify = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (!email) {
-      setErrorMsg("Email is missing. Please register again.");
-      setLoading(false);
-      return;
-    }
-    if (!otp || otp.length !== 6 || isNaN(Number(otp))) {
-      setErrorMsg("OTP must be a 6-digit number.");
-      setLoading(false);
-      return;
-    }
-
-    // Query voter by email and plain OTP
-    const { data: voter, error: findError } = await supabase
-      .from('voter')
+    // 1. Verify OTP from otp_verification table
+    const { data: otpRecord, error: otpError } = await supabase
+      .from('otp_verification')
       .select('*')
       .eq('email', email)
       .eq('otp', otp)
+      .eq('used', false)
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
-    if (findError) {
-      console.error("Supabase error:", findError);
+    if (otpError) {
+      setErrorMsg('Failed to check OTP: ' + otpError.message);
+      setLoading(false);
+      return;
     }
-    if (!voter) {
-      setErrorMsg('Invalid OTP or email. Please check and try again.');
+    if (!otpRecord) {
+      setErrorMsg('Invalid or expired OTP. Please try again.');
       setLoading(false);
       return;
     }
 
-    // Update status to 'verified'
+    // 2. Mark OTP as used
     const { error: updateError } = await supabase
-      .from('voter')
-      .update({ status: 'verified' })
-      .eq('id', voter.id);
+      .from('otp_verification')
+      .update({ used: true })
+      .eq('id', otpRecord.id);
 
     if (updateError) {
-      setErrorMsg('Verification succeeded, but failed to update status.');
+      setErrorMsg('Failed to update OTP status: ' + updateError.message);
       setLoading(false);
       return;
     }
 
-    setSuccessMsg('OTP verified! Redirecting to login...');
+    // 3. Create voter record if not exists (for registration mode)
+    if (mode === 'register') {
+      // Check if voter already exists
+      const { data: existingVoter } = await supabase
+        .from('voter')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (!existingVoter) {
+        const { error: voterError } = await supabase.from('voter').insert([
+          {
+            email,
+            mobile,
+            username,
+            county,
+            subcounty,
+            ward,
+            polling_centre,
+            status: 'active',
+          },
+        ]);
+        if (voterError) {
+          setErrorMsg('Failed to register voter: ' + voterError.message);
+          setLoading(false);
+          return;
+        }
+      }
+    }
+
+    setSuccessMsg('Verification successful! You are now registered.');
     setLoading(false);
 
     setTimeout(() => {
-      router.replace('/login');
-    }, 1200);
-  };
-
-  // Generate a 6-digit OTP
-  const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
-
-  // Resend OTP handler
-  const handleResendOtp = async () => {
-    setResending(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-
-    if (!email) {
-      setErrorMsg("Email is missing. Cannot resend OTP.");
-      setResending(false);
-      return;
-    }
-
-    const newOtp = generateOtp();
-
-    // Update the user's otp in the voter table
-    const { error: updateError } = await supabase
-      .from('voter')
-      .update({ otp: newOtp })
-      .eq('email', email);
-
-    if (updateError) {
-      setErrorMsg('Failed to update OTP. Please try again.');
-      setResending(false);
-      return;
-    }
-
-    // Send the new OTP via EmailJS
-    try {
-      await emailjs.send(
-        'service_21itetw',
-        'template_ks69v69',
-        { email, passcode: newOtp },
-        'OrOyy74P28MfrgPhr'
-      );
-      setSuccessMsg('A new OTP has been sent to your email!');
-    } catch (err) {
-      setErrorMsg('Failed to send the OTP email. Please try again.');
-    }
-
-    setResending(false);
+      router.push('/login'); // or wherever you want to redirect
+    }, 2000);
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', flexDirection: 'column'
-    }}>
-      <img src="/ourwill-logo.png" alt="Logo"
-        style={{ width: '180px', marginBottom: '2rem' }} />
-      <form onSubmit={handleVerify}
-        style={{
-          background: 'white', padding: '2rem', borderRadius: 10,
-          maxWidth: 400, width: '100%', boxShadow: '0 2px 16px #0001'
-        }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Verify OTP</h2>
-        <p style={{ margin: '0 0 1rem 0', textAlign: 'center' }}>
-          Enter the 6-digit OTP sent to <strong>{email || <span style={{color:'red'}}>Email missing</span>}</strong>
-        </p>
-        <input
-          type="text"
-          placeholder="OTP code"
-          value={otp}
-          required
-          onChange={(e) => setOtp(e.target.value)}
-          pattern="\d{6}"
-          maxLength={6}
-          style={{
-            width: '100%', padding: '0.75rem', marginBottom: '1rem',
-            letterSpacing: 8, textAlign: 'center'
-          }}
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%', padding: '0.75rem',
-            background: '#006400', color: '#fff', border: 'none', borderRadius: 4
-          }}>
-          {loading ? 'Verifying...' : 'Verify OTP'}
-        </button>
-        <button
-          type="button"
-          onClick={handleResendOtp}
-          disabled={resending}
-          style={{
-            width: '100%', padding: '0.75rem', marginTop: '1rem',
-            background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4,
-            opacity: resending ? 0.7 : 1
-          }}>
-          {resending ? 'Resending...' : 'Resend OTP'}
-        </button>
-        {errorMsg && <p style={{ color: 'red', marginTop: '1rem' }}>{errorMsg}</p>}
-        {successMsg && <p style={{ color: 'green', marginTop: '1rem' }}>{successMsg}</p>}
-      </form>
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundImage: 'url("/kenya-flag.jpg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        padding: '2rem',
+      }}
+    >
+      <img src="/ourwill-logo.png" alt="OurWill Logo" style={{ width: '180px', marginBottom: '1.5rem' }} />
+
+      <div style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        padding: '2rem',
+        borderRadius: '10px',
+        width: '100%',
+        maxWidth: '400px',
+      }}>
+        <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+          OTP Verification
+        </h2>
+        {errorMsg && <div style={{
+          width: '100%',
+          marginBottom: '1rem',
+          color: '#ef4444',
+          background: '#fee2e2',
+          padding: '0.7rem',
+          borderRadius: '4px',
+          textAlign: 'center',
+          fontSize: '0.98rem',
+        }}>{errorMsg}</div>}
+        {successMsg && <div style={{
+          width: '100%',
+          marginBottom: '1rem',
+          color: '#22c55e',
+          background: '#dcfce7',
+          padding: '0.7rem',
+          borderRadius: '4px',
+          textAlign: 'center',
+          fontSize: '0.98rem',
+        }}>{successMsg}</div>}
+        <form onSubmit={handleSubmit}>
+          <label htmlFor="otp" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>
+            Enter OTP sent to your email
+          </label>
+          <input
+            id="otp"
+            name="otp"
+            type="text"
+            placeholder="6-digit OTP"
+            required
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '0.8rem 0',
+              background: '#3b82f6',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '1.05rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              marginTop: '1rem',
+            }}
+          >
+            {loading ? 'Verifying...' : 'Verify'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
