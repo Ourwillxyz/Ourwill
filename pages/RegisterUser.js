@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
-import emailjs from '@emailjs/browser';
 import sha256 from 'crypto-js/sha256';
 
 export default function RegisterUser() {
@@ -105,22 +104,7 @@ export default function RegisterUser() {
     }));
   };
 
-  const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
-
-  const sendOtpEmail = async (email, passcode) => {
-    try {
-      await emailjs.send(
-        'service_21itetw',
-        'template_ks69v69',
-        { email, passcode },
-        'OrOyy74P28MfrgPhr'
-      );
-      return true;
-    } catch (err) {
-      setErrorMsg('Failed to send OTP email');
-      return false;
-    }
-  };
+  // --- Remove OTP/emailjs logic ---
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -129,11 +113,17 @@ export default function RegisterUser() {
     setSuccessMsg('');
 
     // Check for duplicate mobile
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: mobileError } = await supabase
       .from('voter')
       .select('id')
       .eq('mobile', formData.mobile)
       .single();
+
+    if (mobileError && mobileError.details !== '0 rows returned') {
+      setErrorMsg('Database error. Please try again.');
+      setLoading(false);
+      return;
+    }
 
     if (existingUser) {
       setErrorMsg('This mobile number is already registered. Please use a different number or try logging in.');
@@ -141,59 +131,25 @@ export default function RegisterUser() {
       return;
     }
 
-    const passcode = generateOtp();
-
-    // Hash values
-    const email_hash = sha256(formData.email).toString();
-    const username_hash = sha256(formData.username).toString();
-    const mobile_hash = sha256(formData.mobile).toString();
-    const voter_hash = sha256(
-      formData.username + formData.email + formData.mobile
-    ).toString();
-
-    // Store voter
-    const { error } = await supabase.from('voter').insert([
-      {
-        email: formData.email,
-        mobile: formData.mobile,
-        username: formData.username,
-        county: formData.county,
-        subcounty: formData.subcounty,
-        ward: formData.ward,
-        polling_centre: formData.polling_centre,
-        email_hash,
-        username_hash,
-        mobile_hash,
-        voter_hash,
-        status: 'pending',
-      },
-    ]);
+    // --- KEY CHANGE: Send Supabase magic link for email verification ---
+    const { error } = await supabase.auth.signInWithOtp({
+      email: formData.email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: process.env.NEXT_PUBLIC_MAGIC_LINK_REDIRECT || 'http://localhost:3000/after-verify' // adjust as needed!
+      }
+    });
 
     if (error) {
-      setErrorMsg('Registration failed: ' + error.message);
+      setErrorMsg('Failed to send magic link: ' + error.message);
       setLoading(false);
       return;
     }
 
-    const sent = await sendOtpEmail(formData.email, passcode);
-    if (!sent) {
-      setLoading(false);
-      return;
-    }
-
-    setSuccessMsg('OTP sent successfully! Redirecting...');
-    setTimeout(() => {
-      router.push({
-        pathname: '/verify',
-        query: {
-          email: formData.email,
-          mobile: formData.mobile,
-          mode: 'register', // Pass mode here for verify page
-        },
-      });
-    }, 1500);
-
+    setSuccessMsg('A magic link has been sent to your email. Please check your inbox and click the link to finish registration.');
     setLoading(false);
+
+    // --- DO NOT save voter data yet! Save it after verification (in /after-verify page) ---
   };
 
   return (
@@ -243,6 +199,7 @@ export default function RegisterUser() {
           fontSize: '0.98rem',
         }}>{successMsg}</div>}
         <form onSubmit={handleSubmit}>
+          {/* Form fields unchanged */}
           <label htmlFor="email" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Email</label>
           <input
             id="email"
