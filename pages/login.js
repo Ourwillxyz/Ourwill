@@ -42,8 +42,8 @@ export default function Login() {
         { email, passcode: generatedOtp },
         'OrOyy74P28MfrgPhr'
       );
-      // Redirect to OTP verification page, passing the email
-      router.push({ pathname: '/verify', query: { email } });
+      // Redirect to OTP verification page, passing the email AND mode
+      router.push({ pathname: '/verify', query: { email, mode: 'login' } });
     } catch (err) {
       setError('Failed to send OTP email. Please try again.');
     } finally {
