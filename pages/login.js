@@ -1,31 +1,53 @@
-// pages/Login.js
-
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
+import emailjs from '@emailjs/browser';
 
 export default function Login() {
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const router = useRouter();
 
-  const handleLogin = async (e) => {
+  // Handle requesting OTP and redirect to OTP page
+  const handleRequestOtp = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
-    const { data, error } = await supabase
-      .from('otp_verification')
-      .select('*')
-      .eq('email', email)
-      .eq('passcode', otp)
-      .single();
+    // Generate OTP
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    if (error || !data) {
-      setError('Invalid email or OTP');
-    } else {
-      localStorage.setItem('user_email', email);
-      router.push('/dashboard');
+    // Insert OTP record into otp_verification table
+    const { error: dbError } = await supabase.from('otp_verification').insert({
+      email,
+      otp: generatedOtp,
+      used: false,
+      resend_count: 1,
+      created_at: new Date().toISOString(),
+    });
+
+    if (dbError) {
+      setError('Failed to request OTP. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    // Send OTP via email
+    try {
+      await emailjs.send(
+        'service_21itetw',
+        'template_ks69v69',
+        { email, passcode: generatedOtp },
+        'OrOyy74P28MfrgPhr'
+      );
+      // Redirect to OTP verification page, passing the email
+      router.push({ pathname: '/verify', query: { email } });
+    } catch (err) {
+      setError('Failed to send OTP email. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -44,8 +66,9 @@ export default function Login() {
       }}
     >
       <img src="/ourwill-logo.png" alt="OurWill Logo" style={{ width: '180px', marginBottom: '1.5rem' }} />
+
       <form
-        onSubmit={handleLogin}
+        onSubmit={handleRequestOtp}
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.9)',
           padding: '2rem',
@@ -55,7 +78,6 @@ export default function Login() {
         }}
       >
         <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Login</h2>
-
         <input
           type="email"
           placeholder="Email address"
@@ -64,22 +86,15 @@ export default function Login() {
           required
           style={{ width: '100%', padding: '0.75rem', marginBottom: '1rem' }}
         />
-
-        <input
-          type="text"
-          placeholder="OTP"
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          required
-          style={{ width: '100%', padding: '0.75rem', marginBottom: '1rem' }}
-        />
-
-        <button type="submit" style={{ width: '100%', padding: '0.75rem', backgroundColor: '#006400', color: '#fff' }}>
-          Login
+        <button
+          type="submit"
+          style={{ width: '100%', padding: '0.75rem', backgroundColor: '#006400', color: '#fff' }}
+          disabled={loading}
+        >
+          {loading ? 'Requesting OTP...' : 'Login / Request OTP'}
         </button>
-
         {error && <p style={{ color: 'red', marginTop: '1rem' }}>{error}</p>}
       </form>
     </div>
   );
-} 
+}
