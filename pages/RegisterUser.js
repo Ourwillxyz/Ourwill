@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../src/supabaseClient";
-import emailjs from "emailjs-com";
 
 export default function RegisterUser() {
   const [counties, setCounties] = useState([]);
@@ -82,29 +81,6 @@ export default function RegisterUser() {
       .join("");
   };
 
-  const generateOTP = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
-
-  const sendEmailOTP = async (email, passcode) => {
-    try {
-      await emailjs.send(
-        "service_21itetw", // ✅ Replace this
-        "template_ks69v69", // ✅ Replace this
-        {
-          to_email: email,
-          username: username,
-          otp_code: otp,
-        },
-        "OrOyy74P28MfrgPhr" // ✅ Replace this
-      );
-      console.log("OTP email sent successfully");
-    } catch (err) {
-      console.error("Failed to send OTP email:", err);
-      setMessage("Failed to send OTP email.");
-    }
-  };
-
   const handleSendOTP = async () => {
     setLoading(true);
     setMessage("");
@@ -149,8 +125,6 @@ export default function RegisterUser() {
         return;
       }
 
-      const otp = generateOTP();
-
       const payload = {
         username: formData.username,
         email: formData.email,
@@ -169,9 +143,8 @@ export default function RegisterUser() {
       const { error } = await supabase.from("voter").insert([payload]);
 
       if (!error) {
-        await sendEmailOTP(formData.email, formData.username, otp);
         setOtpSent(true);
-        setMessage("✅ OTP sent to your email.");
+        setMessage("OTP sent to your mobile/email.");
       } else {
         console.error(error);
         setMessage("Failed to register. Please try again.");
@@ -230,12 +203,7 @@ export default function RegisterUser() {
         ))}
       </select>
 
-      <select
-        name="polling_centre"
-        onChange={handleChange}
-        value={formData.polling_centre}
-        style={styles.input}
-      >
+      <select name="polling_centre" onChange={handleChange} value={formData.polling_centre} style={styles.input}>
         <option value="">Select Polling Centre</option>
         {pollingCentres.map((p) => (
           <option key={p.code} value={p.name}>{p.name}</option>
