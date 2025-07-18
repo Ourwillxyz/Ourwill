@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../src/supabaseClient';
-import emailjs from 'emailjs-com';
+import emailjs from '@emailjs/browser';
 
 export default function ResendOTP() {
   const [email, setEmail] = useState('');
