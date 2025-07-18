@@ -118,7 +118,7 @@ export default function Verify() {
       setSuccessMsg('Registration complete! Redirecting...');
       setLoading(false);
       setTimeout(() => {
-        router.replace('/dashboard');
+        router.replace('/login');
       }, 1500);
 
     } else {
