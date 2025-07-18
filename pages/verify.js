@@ -5,7 +5,7 @@ import emailjs from '@emailjs/browser';
 
 export default function Verify() {
   const router = useRouter();
-  const { email, mobile } = router.query;
+  const { email, mobile, mode } = router.query; // mode: 'login' or 'register'
 
   const [otpInput, setOtpInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,12 +14,14 @@ export default function Verify() {
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
-  // Redirect if email is missing
+  // Redirect if email or mode is missing
   useEffect(() => {
-    if (!email) {
+    // Avoid redirect on first SSR/empty hydration
+    if (typeof email === 'undefined' || typeof mode === 'undefined') return;
+    if (!email || !mode) {
       router.replace('/RegisterUser');
     }
-  }, [email, router]);
+  }, [email, mode, router]);
 
   // Handle resend timer
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function Verify() {
       .single();
 
     if (error || !data) {
-      setErrorMsg('Could not verify OTP. Please try registering again.');
+      setErrorMsg('Could not verify OTP. Please try again.');
       setLoading(false);
       return;
     }
@@ -72,13 +74,57 @@ export default function Verify() {
       return;
     }
 
-    setSuccessMsg('OTP verified! Your registration is complete.');
-    setLoading(false);
+    // Shared: set user login state
+    localStorage.setItem('user_email', email);
 
-    // Redirect after short delay
-    setTimeout(() => {
-      router.replace('/'); // or dashboard, etc.
-    }, 2000);
+    // Branch by mode
+    if (mode === 'login') {
+      // Insert login record into otp_login table
+      const { error: loginError } = await supabase
+        .from('otp_login')
+        .insert({
+          email,
+          login_time: new Date().toISOString(),
+        });
+
+      if (loginError) {
+        setErrorMsg('Login failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      setSuccessMsg('OTP verified! Redirecting to dashboard...');
+      setLoading(false);
+      setTimeout(() => {
+        router.replace('/dashboard');
+      }, 1500);
+
+    } else if (mode === 'register') {
+      // Create voter/user record if needed (example: voter table)
+      const { data: voterExists } = await supabase
+        .from('voter')
+        .select('email')
+        .eq('email', email)
+        .single();
+
+      if (!voterExists) {
+        await supabase.from('voter').insert({
+          email,
+          registered_at: new Date().toISOString(),
+          mobile: mobile || null,
+        });
+      }
+
+      setSuccessMsg('Registration complete! Redirecting...');
+      setLoading(false);
+      setTimeout(() => {
+        router.replace('/dashboard');
+      }, 1500);
+
+    } else {
+      setErrorMsg('Unknown verification mode.');
+      setLoading(false);
+    }
   }
 
   // Resend OTP logic
@@ -145,7 +191,7 @@ export default function Verify() {
         <h2>OTP Verification</h2>
         {email && (
           <p>
-            We sent an OTP to <strong>{email}</strong>. Please enter it below to verify your registration.
+            We sent an OTP to <strong>{email}</strong>. Please enter it below to verify your {mode === 'login' ? 'login' : 'registration'}.
           </p>
         )}
         {errorMsg && <div className="error-msg">{errorMsg}</div>}
