@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 import sha256 from 'crypto-js/sha256';
@@ -6,12 +6,17 @@ import emailjs from '@emailjs/browser';
 
 export default function Verify() {
   const router = useRouter();
-  const email = router.query.email || '';
+  const email = (router.query.email || '').trim(); // Trim whitespace
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [resending, setResending] = useState(false);
+
+  // Show email debug info
+  useEffect(() => {
+    console.log("Email from query:", email);
+  }, [email]);
 
   // Verify OTP handler
   const handleVerify = async (e) => {
@@ -20,7 +25,22 @@ export default function Verify() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    const otp_hash = sha256(otp).toString();
+    // Defensive: Check email is present
+    if (!email) {
+      setErrorMsg("Email is missing. Please register again.");
+      setLoading(false);
+      return;
+    }
+    if (!otp || otp.length !== 6 || isNaN(Number(otp))) {
+      setErrorMsg("OTP must be a 6-digit number.");
+      setLoading(false);
+      return;
+    }
+
+    const otp_hash = sha256(otp.trim()).toString();
+    console.log("Verifying email:", email);
+    console.log("Entered OTP:", otp);
+    console.log("Hashed OTP:", otp_hash);
 
     // Query voter by email and hashed OTP
     const { data: voter, error: findError } = await supabase
@@ -30,7 +50,10 @@ export default function Verify() {
       .eq('otp_hash', otp_hash)
       .single();
 
-    if (findError || !voter) {
+    if (findError) {
+      console.error("Supabase error:", findError);
+    }
+    if (!voter) {
       setErrorMsg('Invalid OTP or email. Please check and try again.');
       setLoading(false);
       return;
@@ -64,6 +87,12 @@ export default function Verify() {
     setResending(true);
     setErrorMsg('');
     setSuccessMsg('');
+
+    if (!email) {
+      setErrorMsg("Email is missing. Cannot resend OTP.");
+      setResending(false);
+      return;
+    }
 
     const newOtp = generateOtp();
     const otp_hash = sha256(newOtp).toString();
@@ -110,7 +139,7 @@ export default function Verify() {
         }}>
         <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Verify OTP</h2>
         <p style={{ margin: '0 0 1rem 0', textAlign: 'center' }}>
-          Enter the 6-digit OTP sent to <strong>{email}</strong>
+          Enter the 6-digit OTP sent to <strong>{email || <span style={{color:'red'}}>Email missing</span>}</strong>
         </p>
         <input
           type="text"
