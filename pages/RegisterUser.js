@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../src/supabaseClient';
 import emailjs from '@emailjs/browser';
 import sha256 from 'crypto-js/sha256';
 import Image from 'next/image';
