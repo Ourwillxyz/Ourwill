@@ -106,27 +106,20 @@ export default function RegisterUser() {
   };
 
   // Generate a 6-digit OTP
-  const generateOtp = () => {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log("Generated OTP:", otp);
-    return otp;
-  };
+  const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
   // Send OTP via EmailJS
   const sendOtpEmail = async (email, otp) => {
-    console.log("Sending OTP email to:", email, "with OTP:", otp);
     try {
-      const result = await emailjs.send(
+      await emailjs.send(
         'service_21itetw',
         'template_ks69v69',
         { email, passcode: otp },
         'OrOyy74P28MfrgPhr'
       );
-      console.log("EmailJS result:", result);
       return true;
     } catch (err) {
-      setErrorMsg('Failed to send OTP email. Please check your email address or try again.');
-      console.error("EmailJS error:", err);
+      setErrorMsg('Failed to send OTP email');
       return false;
     }
   };
@@ -136,92 +129,74 @@ export default function RegisterUser() {
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
-    console.log("Registration started...");
 
-    try {
-      // Step 1: Check for duplicate mobile
-      const { data: existingUser, error: mobileError } = await supabase
-        .from('voter')
-        .select('id')
-        .eq('mobile', formData.mobile)
-        .single();
+    // Check for duplicate mobile
+    const { data: existingUser } = await supabase
+      .from('voter')
+      .select('id')
+      .eq('mobile', formData.mobile)
+      .single();
 
-      console.log("Duplicate check response:", existingUser, mobileError);
+    if (existingUser) {
+      setErrorMsg('This mobile number is already registered. Please use a different number or try logging in.');
+      setLoading(false);
+      return;
+    }
 
-      if (mobileError && mobileError.details !== '0 rows returned') {
-        setErrorMsg('Database error. Please try again.');
-        setLoading(false);
-        return;
-      }
+    const otp = generateOtp();
 
-      if (existingUser) {
-        setErrorMsg('This mobile number is already registered. Please use a different number or try logging in.');
-        setLoading(false);
-        return;
-      }
+    // Hash values for security
+    const email_hash = sha256(formData.email).toString();
+    const username_hash = sha256(formData.username).toString();
+    const mobile_hash = sha256(formData.mobile).toString();
+    const voter_hash = sha256(
+      formData.username + formData.email + formData.mobile
+    ).toString();
+    const otp_hash = sha256(otp).toString();
 
-      // Step 2: Generate OTP and hash
-      const otp = generateOtp();
+    // Store voter data with status 'pending' and save OTP hash
+    const { error } = await supabase.from('voter').insert([
+      {
+        email: formData.email,
+        mobile: formData.mobile,
+        username: formData.username,
+        county: formData.county,
+        subcounty: formData.subcounty,
+        ward: formData.ward,
+        polling_centre: formData.polling_centre,
+        email_hash,
+        username_hash,
+        mobile_hash,
+        voter_hash,
+        otp_hash,
+        status: 'pending',
+      },
+    ]);
 
-      const email_hash = sha256(formData.email).toString();
-      const username_hash = sha256(formData.username).toString();
-      const mobile_hash = sha256(formData.mobile).toString();
-      const voter_hash = sha256(
-        formData.username + formData.email + formData.mobile
-      ).toString();
-      const otp_hash = sha256(otp).toString();
+    if (error) {
+      setErrorMsg('Registration failed: ' + error.message);
+      setLoading(false);
+      return;
+    }
 
-      // Step 3: Insert voter record
-      const { error: insertError } = await supabase.from('voter').insert([
-        {
+    const sent = await sendOtpEmail(formData.email, otp);
+    if (!sent) {
+      setLoading(false);
+      return;
+    }
+
+    setSuccessMsg('OTP sent successfully! Redirecting to verification...');
+    setTimeout(() => {
+      router.push({
+        pathname: '/verify',
+        query: {
           email: formData.email,
           mobile: formData.mobile,
-          username: formData.username,
-          county: formData.county,
-          subcounty: formData.subcounty,
-          ward: formData.ward,
-          polling_centre: formData.polling_centre,
-          email_hash,
-          username_hash,
-          mobile_hash,
-          voter_hash,
-          otp_hash,
-          status: 'pending',
+          mode: 'register',
         },
-      ]);
+      });
+    }, 1500);
 
-      console.log("Insert response:", insertError);
-
-      if (insertError) {
-        setErrorMsg('Registration failed: ' + insertError.message);
-        setLoading(false);
-        return;
-      }
-
-      // Step 4: Send OTP Email
-      const sent = await sendOtpEmail(formData.email, otp);
-      if (!sent) {
-        setLoading(false);
-        return;
-      }
-
-      setSuccessMsg('OTP sent successfully! Redirecting to verification...');
-      console.log("OTP email sent and success message set.");
-
-      setTimeout(() => {
-        router.push({
-          pathname: '/verify',
-          query: {
-            email: formData.email,
-            mobile: formData.mobile,
-            mode: 'register',
-          },
-        });
-      }, 1500);
-    } catch (err) {
-      setErrorMsg('Unexpected error: ' + (err?.message || err));
-      console.error("General error:", err);
-    }
     setLoading(false);
   };
 
