@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 import sha256 from 'crypto-js/sha256';
+import emailjs from '@emailjs/browser';
 
 export default function Verify() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function Verify() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [resending, setResending] = useState(false);
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -54,6 +56,44 @@ export default function Verify() {
     }, 1000);
   };
 
+  const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+  const handleResendOtp = async () => {
+    setResending(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    const newOtp = generateOtp();
+    const otp_hash = sha256(newOtp).toString();
+
+    // Update the user's otp_hash in the voter table
+    const { error: updateError } = await supabase
+      .from('voter')
+      .update({ otp_hash })
+      .eq('email', email);
+
+    if (updateError) {
+      setErrorMsg('Failed to update OTP. Please try again.');
+      setResending(false);
+      return;
+    }
+
+    // Send the new OTP via EmailJS
+    try {
+      await emailjs.send(
+        'service_21itetw',
+        'template_ks69v69',
+        { email, passcode: newOtp },
+        'OrOyy74P28MfrgPhr'
+      );
+      setSuccessMsg('A new OTP has been sent to your email!');
+    } catch (err) {
+      setErrorMsg('Failed to send the OTP email. Please try again.');
+    }
+
+    setResending(false);
+  };
+
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center',
@@ -91,6 +131,17 @@ export default function Verify() {
             background: '#006400', color: '#fff', border: 'none', borderRadius: 4
           }}>
           {loading ? 'Verifying...' : 'Verify OTP'}
+        </button>
+        <button
+          type="button"
+          onClick={handleResendOtp}
+          disabled={resending}
+          style={{
+            width: '100%', padding: '0.75rem', marginTop: '1rem',
+            background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4,
+            opacity: resending ? 0.7 : 1
+          }}>
+          {resending ? 'Resending...' : 'Resend OTP'}
         </button>
         {errorMsg && <p style={{ color: 'red', marginTop: '1rem' }}>{errorMsg}</p>}
         {successMsg && <p style={{ color: 'green', marginTop: '1rem' }}>{successMsg}</p>}
