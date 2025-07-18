@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
+import sha256 from 'crypto-js/sha256';
 
 export default function Verify() {
   const router = useRouter();
@@ -16,15 +17,31 @@ export default function Verify() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Supabase Auth OTP verify (v2+)
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: 'email',
-    });
+    // Hash the OTP input
+    const otp_hash = sha256(otp).toString();
 
-    if (error) {
-      setErrorMsg(error.message || 'Invalid OTP. Try again.');
+    // Find voter by email and hashed OTP
+    const { data: voter, error: findError } = await supabase
+      .from('voter')
+      .select('*')
+      .eq('email', email)
+      .eq('otp_hash', otp_hash)
+      .single();
+
+    if (findError || !voter) {
+      setErrorMsg('Invalid OTP or email. Please check and try again.');
+      setLoading(false);
+      return;
+    }
+
+    // Update status to 'verified'
+    const { error: updateError } = await supabase
+      .from('voter')
+      .update({ status: 'verified' })
+      .eq('id', voter.id);
+
+    if (updateError) {
+      setErrorMsg('Verification succeeded, but failed to update status.');
       setLoading(false);
       return;
     }
