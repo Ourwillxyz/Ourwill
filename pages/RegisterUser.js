@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../src/supabaseClient";
-import emailjs from "@emailjs/browser";
-import CryptoJS from "crypto-js";
+import { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
+import emailjs from '@emailjs/browser';
+import sha256 from 'crypto-js/sha256';
+import Image from 'next/image';
 
 export default function RegisterUser() {
   const [counties, setCounties] = useState([]);
@@ -9,207 +10,225 @@ export default function RegisterUser() {
   const [wards, setWards] = useState([]);
   const [pollingCentres, setPollingCentres] = useState([]);
 
-  const [selectedCounty, setSelectedCounty] = useState("");
-  const [selectedSubcounty, setSelectedSubcounty] = useState("");
-  const [selectedWard, setSelectedWard] = useState("");
-
   const [formData, setFormData] = useState({
-    mobile: "",
-    email: "",
-    username: "",
-    polling_centre: "",
+    email: '',
+    mobile: '',
+    username: '',
+    county: '',
+    subcounty: '',
+    ward: '',
+    polling_centre: ''
   });
 
-  const [otp, setOtp] = useState("");
-  const [userOtp, setUserOtp] = useState("");
+  const [otp, setOtp] = useState('');
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
-  const [countdown, setCountdown] = useState(0);
 
-  // --- Load Counties ---
   useEffect(() => {
-    const fetchCounties = async () => {
-      const { data } = await supabase.from("counties").select("*");
-      setCounties(data || []);
-    };
     fetchCounties();
   }, []);
 
-  // --- Load Subcounties ---
   useEffect(() => {
-    if (!selectedCounty) return;
-    const fetchSubcounties = async () => {
-      const { data } = await supabase
-        .from("subcounties")
-        .select("*")
-        .eq("county_code", selectedCounty);
-      setSubcounties(data || []);
-    };
-    fetchSubcounties();
-  }, [selectedCounty]);
+    if (formData.county) fetchSubcounties();
+  }, [formData.county]);
 
-  // --- Load Wards ---
   useEffect(() => {
-    if (!selectedSubcounty) return;
-    const fetchWards = async () => {
-      const { data } = await supabase
-        .from("wards")
-        .select("*")
-        .eq("subcounty_code", selectedSubcounty);
-      setWards(data || []);
-    };
-    fetchWards();
-  }, [selectedSubcounty]);
+    if (formData.subcounty) fetchWards();
+  }, [formData.subcounty]);
 
-  // --- Load Polling Centres ---
   useEffect(() => {
-    if (!selectedWard) return;
-    const fetchPolling = async () => {
-      const { data } = await supabase
-        .from("polling_centres")
-        .select("*")
-        .eq("ward_code", selectedWard);
-      setPollingCentres(data || []);
-    };
-    fetchPolling();
-  }, [selectedWard]);
+    if (formData.ward) fetchPollingCentres();
+  }, [formData.ward]);
 
-  // --- Handle Input ---
+  useEffect(() => {
+    let timer;
+    if (otpSent && resendTimer > 0) {
+      timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+    } else if (resendTimer === 0) {
+      setCanResend(true);
+    }
+    return () => clearTimeout(timer);
+  }, [otpSent, resendTimer]);
+
+  const fetchCounties = async () => {
+    const { data, error } = await supabase.from('counties').select();
+    if (data) setCounties(data);
+  };
+
+  const fetchSubcounties = async () => {
+    const { data } = await supabase
+      .from('subcounties')
+      .select()
+      .eq('county_code', formData.county);
+    if (data) setSubcounties(data);
+  };
+
+  const fetchWards = async () => {
+    const { data } = await supabase
+      .from('wards')
+      .select()
+      .eq('subcounty_code', formData.subcounty);
+    if (data) setWards(data);
+  };
+
+  const fetchPollingCentres = async () => {
+    const { data } = await supabase
+      .from('polling_centres')
+      .select()
+      .eq('ward_code', formData.ward);
+    if (data) setPollingCentres(data);
+  };
+
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  // --- Generate OTP ---
-  const generateOTP = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
-
-  // --- Hash Data ---
-  const hash = (value) => CryptoJS.SHA256(value).toString();
-
-  // --- Countdown ---
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
-    return () => clearInterval(timer);
-  }, [countdown]);
-
-  // --- Submit Form ---
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const { mobile, email, username, polling_centre } = formData;
-    if (!mobile || !email || !username || !selectedCounty || !selectedSubcounty || !selectedWard || !polling_centre) {
-      alert("Please fill all fields.");
-      return;
-    }
+    const passcode = Math.floor(100000 + Math.random() * 900000).toString();
+    setOtp(passcode);
 
-    // --- Check if mobile/email/username exists ---
-    const { data: existing } = await supabase
-      .from("voter")
-      .select("id")
-      .or(`mobile.eq.${mobile},email.eq.${email},username.eq.${username}`);
-    if (existing.length > 0) {
-      alert("Mobile, Email, or Username already registered.");
-      return;
-    }
+    const email_hash = sha256(formData.email).toString();
+    const username_hash = sha256(formData.username).toString();
+    const mobile_hash = sha256(formData.mobile).toString();
+    const voter_hash = sha256(
+      formData.username + formData.email + formData.mobile
+    ).toString();
 
-    // --- Generate OTP ---
-    const newOtp = generateOTP();
-    setOtp(newOtp);
-
-    // --- Insert voter ---
-    const { error } = await supabase.from("voter").insert([
+    const { error } = await supabase.from('voter').insert([
       {
-        mobile,
-        email,
-        username,
-        county: selectedCounty,
-        subcounty: selectedSubcounty,
-        ward: selectedWard,
-        polling_centre,
-        mobile_hash: hash(mobile),
-        email_hash: hash(email),
-        username_hash: hash(username),
-        voter_hash: hash(mobile + email + username),
-        status: "pending",
-      },
+        email: formData.email,
+        mobile: formData.mobile,
+        username: formData.username,
+        county: formData.county,
+        subcounty: formData.subcounty,
+        ward: formData.ward,
+        polling_centre: formData.polling_centre,
+        email_hash,
+        username_hash,
+        mobile_hash,
+        voter_hash,
+        status: 'pending'
+      }
     ]);
 
     if (error) {
-      console.error(error);
-      alert("Registration failed.");
+      alert('Registration failed: ' + error.message);
       return;
     }
 
-    // --- Send Email with OTP ---
-    try {
-      await emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
-        {
-          email,
-          passcode: newOtp,
-        },
-        process.env.NEXT_PUBLIC_EMAILJS_USER_ID
-      );
-      setOtpSent(true);
-      setCountdown(60);
-    } catch (err) {
-      console.error("EmailJS error:", err);
-      alert("OTP not sent via email.");
-    }
-  };
-
-  const resendOtp = () => {
-    if (countdown > 0) return;
-    const newOtp = generateOTP();
-    setOtp(newOtp);
-    setCountdown(60);
-    emailjs.send(
-      process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-      process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
+    await emailjs.send(
+      'service_21itetw',
+      'template_ks69v69',
       {
         email: formData.email,
-        passcode: newOtp,
+        passcode: passcode
       },
-      process.env.NEXT_PUBLIC_EMAILJS_USER_ID
+      'OrOyy74P28MfrgPhr'
     );
+
+    setOtpSent(true);
+    setResendTimer(60);
+    setCanResend(false);
+    alert('OTP sent successfully.');
+  };
+
+  const resendOtp = async () => {
+    if (!canResend) return;
+
+    const passcode = Math.floor(100000 + Math.random() * 900000).toString();
+    setOtp(passcode);
+
+    await emailjs.send(
+      'service_21itetw',
+      'template_ks69v69',
+      {
+        email: formData.email,
+        passcode: passcode
+      },
+      'OrOyy74P28MfrgPhr'
+    );
+
+    setResendTimer(60);
+    setCanResend(false);
+    setOtpSent(true);
+    alert('OTP resent successfully.');
   };
 
   return (
-    <div style={{ background: "url('/flag.png') no-repeat", backgroundSize: "cover", padding: 20 }}>
-      <img src="/logo.png" alt="Logo" style={{ width: 100, opacity: 0.3 }} />
-      <h2>Register to Vote</h2>
+    <div
+      style={{
+        backgroundImage: 'url("/flag.png")',
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'contain',
+        backgroundPosition: 'center',
+        minHeight: '100vh',
+        padding: '2rem'
+      }}
+    >
+      <Image src="/logo.png" alt="Logo" width={100} height={100} />
+      <h2>Voter Registration</h2>
       <form onSubmit={handleSubmit}>
-        <input name="mobile" placeholder="Mobile" onChange={handleChange} required />
-        <input name="email" placeholder="Email" type="email" onChange={handleChange} required />
-        <input name="username" placeholder="Username" onChange={handleChange} required />
-
-        <select onChange={(e) => setSelectedCounty(e.target.value)} required>
+        <input
+          name="email"
+          type="email"
+          placeholder="Email"
+          required
+          value={formData.email}
+          onChange={handleChange}
+        />
+        <input
+          name="mobile"
+          type="tel"
+          placeholder="Mobile"
+          required
+          value={formData.mobile}
+          onChange={handleChange}
+        />
+        <input
+          name="username"
+          type="text"
+          placeholder="Username"
+          required
+          value={formData.username}
+          onChange={handleChange}
+        />
+        <select name="county" required onChange={handleChange}>
           <option value="">Select County</option>
           {counties.map((c) => (
-            <option key={c.code} value={c.code}>{c.name}</option>
+            <option key={c.code} value={c.code}>
+              {c.name}
+            </option>
           ))}
         </select>
-
-        <select onChange={(e) => setSelectedSubcounty(e.target.value)} required>
+        <select name="subcounty" required onChange={handleChange}>
           <option value="">Select Subcounty</option>
           {subcounties.map((s) => (
-            <option key={s.code} value={s.code}>{s.name}</option>
+            <option key={s.code} value={s.code}>
+              {s.name}
+            </option>
           ))}
         </select>
-
-        <select onChange={(e) => setSelectedWard(e.target.value)} required>
+        <select name="ward" required onChange={handleChange}>
           <option value="">Select Ward</option>
           {wards.map((w) => (
-            <option key={w.code} value={w.code}>{w.name}</option>
+            <option key={w.code} value={w.code}>
+              {w.name}
+            </option>
           ))}
         </select>
-
-        <select name="polling_centre" onChange={handleChange} required>
+        <select name="polling_centre" required onChange={handleChange}>
           <option value="">Select Polling Centre</option>
           {pollingCentres.map((p) => (
-            <option key={p.code} value={p.code}>{p.name}</option>
+            <option key={p.code} value={p.code}>
+              {p.name}
+            </option>
           ))}
         </select>
 
@@ -217,19 +236,10 @@ export default function RegisterUser() {
       </form>
 
       {otpSent && (
-        <div>
-          <h3>Enter OTP sent to your email</h3>
-          <input
-            value={userOtp}
-            onChange={(e) => setUserOtp(e.target.value)}
-            placeholder="Enter OTP"
-          />
-          <button onClick={() => alert(userOtp === otp ? "OTP Verified!" : "Invalid OTP")}>
-            Verify
-          </button>
-          <br />
-          <button onClick={resendOtp} disabled={countdown > 0}>
-            Resend OTP {countdown > 0 ? `(${countdown}s)` : ""}
+        <div style={{ marginTop: '1rem' }}>
+          <p>OTP sent to your email.</p>
+          <button onClick={resendOtp} disabled={!canResend}>
+            {canResend ? 'Resend OTP' : `Resend in ${resendTimer}s`}
           </button>
         </div>
       )}
