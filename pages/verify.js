@@ -1,211 +1,254 @@
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useState, useEffect } from 'react';
 import { supabase } from '../src/supabaseClient';
-import sha256 from 'crypto-js/sha256';
 import emailjs from '@emailjs/browser';
 
 export default function Verify() {
-  const [otpInput, setOtpInput] = useState('');
-  const [info, setInfo] = useState('');
-  const [email, setEmail] = useState('');
-  const [countdown, setCountdown] = useState(0);
-  const [resending, setResending] = useState(false);
   const router = useRouter();
+  const { email, mobile } = router.query;
 
+  const [otpInput, setOtpInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+
+  // Redirect if email is missing
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('pending_registration') || '{}');
-    if (stored.email) setEmail(stored.email);
-
-    const timer = countdown > 0
-      ? setTimeout(() => setCountdown(countdown - 1), 1000)
-      : null;
-    return () => clearTimeout(timer);
-  }, [countdown]);
-
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    if (!otpInput.trim()) return setInfo('❌ Please enter your OTP.');
-    if (!email) return setInfo('❌ Email is missing.');
-
-    setInfo('⏳ Verifying OTP...');
-    const { data: match, error } = await supabase
-      .from('otp_verification')
-      .select('*')
-      .eq('email', email)
-      .eq('otp', otpInput.trim())
-      .eq('used', false)
-      .maybeSingle();
-
-    if (!match || error) return setInfo('❌ Invalid or expired OTP.');
-
-    // Mark OTP used
-    await supabase.from('otp_verification').update({ used: true }).eq('id', match.id);
-
-    // Restore user data
-    const pending = JSON.parse(localStorage.getItem('pending_registration') || '{}');
-    const { username, mobile, county, subcounty, ward, polling_centre } = pending;
-
-    if (!username || !mobile || !county || !subcounty || !ward || !polling_centre) {
-      return setInfo('❌ Incomplete registration data.');
+    if (!email) {
+      router.replace('/RegisterUser');
     }
+  }, [email, router]);
 
-    // Hash sensitive info
-    const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
-    const usernameHash = sha256(username).toString();
-    const emailHash = sha256(email).toString();
-    const mobileHash = sha256(mobile).toString();
+  // Handle resend timer
+  useEffect(() => {
+    if (resendTimer > 0 && !canResend) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (resendTimer === 0) {
+      setCanResend(true);
+    }
+  }, [resendTimer, canResend]);
 
-    // Prevent duplicate voter_hash
-    const { data: existing } = await supabase
+  // Simulate fetching the OTP sent to the user (in real app, never expose OTP client-side)
+  // For demo, we check the last OTP sent stored in Supabase for this email
+  async function verifyOtp() {
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    // Simulate: fetch the pending voter entry by email
+    const { data, error } = await supabase
       .from('voter')
-      .select('*')
-      .eq('voter_hash', voterHash)
-      .maybeSingle();
-
-    if (existing) {
-      localStorage.removeItem('pending_registration');
-      sessionStorage.setItem('voterData', JSON.stringify(existing));
-      return router.push('/dashboard');
-    }
-
-    // Save user
-    const { error: insertError } = await supabase.from('voter').insert([{
-      username,
-      email: null, // hashed instead
-      mobile: null,
-      county,
-      subcounty,
-      ward,
-      polling_centre,
-      voter_hash: voterHash,
-      username_hash: usernameHash,
-      email_hash: emailHash,
-      mobile_hash: mobileHash,
-      status: 'verified'
-    }]);
-
-    if (insertError) {
-      console.error('Insert error:', insertError);
-      return setInfo('❌ Failed to save your record. Contact support.');
-    }
-
-    // Store session
-    sessionStorage.setItem('voterData', JSON.stringify({
-      username,
-      county,
-      subcounty,
-      ward,
-      polling_centre,
-      email_hash: emailHash,
-      voter_hash: voterHash,
-    }));
-
-    localStorage.removeItem('pending_registration');
-    setInfo('✅ Registration complete! Redirecting...');
-    setTimeout(() => router.push('/dashboard'), 2000);
-  };
-
-  const handleResendOTP = async () => {
-    if (!email) return setInfo('❌ Email missing.');
-    if (countdown > 0) return setInfo(`⏳ Wait ${countdown}s to resend.`);
-
-    setResending(true);
-    setInfo('⏳ Checking resend eligibility...');
-
-    const { data: otpRecord, error } = await supabase
-      .from('otp_verification')
-      .select('*')
+      .select('otp, status')
       .eq('email', email)
-      .eq('used', false)
-      .order('created_at', { ascending: false })
-      .maybeSingle();
+      .eq('status', 'pending')
+      .single();
+
+    if (error || !data) {
+      setErrorMsg('Could not verify OTP. Please try registering again.');
+      setLoading(false);
+      return;
+    }
+
+    if (data.otp !== otpInput) {
+      setErrorMsg('Incorrect OTP. Please check and try again.');
+      setLoading(false);
+      return;
+    }
+
+    // Mark user as verified
+    const { error: updateError } = await supabase
+      .from('voter')
+      .update({ status: 'verified' })
+      .eq('email', email);
+
+    if (updateError) {
+      setErrorMsg('Verification failed. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    setSuccessMsg('OTP verified! Your registration is complete.');
+    setLoading(false);
+
+    // Redirect after short delay
+    setTimeout(() => {
+      router.replace('/'); // or dashboard, etc.
+    }, 2000);
+  }
+
+  // Resend OTP logic
+  async function handleResendOtp() {
+    if (!canResend) return;
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    // Generate new OTP
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Update OTP in DB
+    const { error } = await supabase
+      .from('voter')
+      .update({ otp: newOtp })
+      .eq('email', email);
 
     if (error) {
-      setInfo('❌ Error checking resend.');
-      setResending(false);
+      setErrorMsg('Failed to resend OTP.');
+      setLoading(false);
       return;
     }
 
-    let resendCount = otpRecord?.resend_count || 0;
-
-    if (resendCount >= 3) {
-      setInfo('❌ OTP resend limit reached. Contact support.');
-      setResending(false);
-      return;
-    }
-
-    const otp = otpRecord?.otp || Math.floor(100000 + Math.random() * 900000).toString();
-
-    if (!otpRecord) {
-      const { error: insertError } = await supabase
-        .from('otp_verification')
-        .insert([{ email: email.trim(), otp, used: false, resend_count: 1 }]);
-      if (insertError) {
-        console.error('OTP Insert Error:', insertError);
-        setResending(false);
-        return setInfo('❌ Failed to create OTP.');
-      }
-    } else {
-      resendCount += 1;
-      const { error: updateError } = await supabase
-        .from('otp_verification')
-        .update({ resend_count: resendCount })
-        .eq('id', otpRecord.id);
-      if (updateError) {
-        console.error('OTP Update Error:', updateError);
-        setResending(false);
-        return setInfo('❌ Failed to update count.');
-      }
-    }
-
+    // Send OTP via email
     try {
-      const now = new Date().toLocaleString();
       await emailjs.send(
         'service_21itetw',
         'template_ks69v69',
-        { email, passcode: otp, time: now },
+        { email, passcode: newOtp },
         'OrOyy74P28MfrgPhr'
       );
-
-      setInfo(resendCount === 3 ? '⚠️ OTP resent. Final attempt.' : '✅ OTP resent successfully.');
-      setCountdown(60);
-    } catch (err) {
-      console.error('EmailJS error:', err);
-      setInfo('❌ Failed to send OTP.');
+      setSuccessMsg('New OTP sent to your email!');
+      setResendTimer(60);
+      setCanResend(false);
+    } catch {
+      setErrorMsg('Failed to send OTP email.');
     }
 
-    setResending(false);
-  };
+    setLoading(false);
+  }
 
   return (
-    <div style={{ maxWidth: 420, margin: '5rem auto', padding: 24, textAlign: 'center', border: '1px solid #ccc', borderRadius: 8 }}>
-      <h2>Verify Your OTP</h2>
-      <form onSubmit={handleVerify} style={{ marginTop: 20 }}>
-        <input
-          type="text"
-          placeholder="Enter your OTP"
-          value={otpInput}
-          onChange={(e) => setOtpInput(e.target.value)}
-          maxLength={6}
-          style={{ width: '100%', padding: 10 }}
-        />
-        <button type="submit" style={{ marginTop: 16, padding: '10px 20px' }}>Verify</button>
-      </form>
-
-      <button
-        onClick={handleResendOTP}
-        disabled={resending || countdown > 0}
-        style={{ marginTop: 20, backgroundColor: '#f0f0f0', padding: '8px 16px', cursor: countdown > 0 ? 'not-allowed' : 'pointer' }}
-      >
-        {countdown > 0 ? `Wait ${countdown}s` : 'Resend OTP'}
-      </button>
-
-      {info && (
-        <p style={{
-          marginTop: 20,
-          color: info.startsWith('✅') || info.startsWith('⚠️') ? 'green' : 'red'
-        }}>{info}</p>
-      )}
+    <div className="verify-container">
+      <div className="verify-card">
+        <h2>OTP Verification</h2>
+        {email && (
+          <p>
+            We sent an OTP to <strong>{email}</strong>. Please enter it below to verify your registration.
+          </p>
+        )}
+        {errorMsg && <div className="error-msg">{errorMsg}</div>}
+        {successMsg && <div className="success-msg">{successMsg}</div>}
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            verifyOtp();
+          }}
+        >
+          <label htmlFor="otp">Enter OTP</label>
+          <input
+            id="otp"
+            name="otp"
+            type="text"
+            maxLength={6}
+            required
+            value={otpInput}
+            onChange={e => setOtpInput(e.target.value)}
+            pattern="\d{6}"
+            placeholder="6-digit OTP"
+          />
+          <button type="submit" disabled={loading}>
+            {loading ? 'Verifying...' : 'Verify OTP'}
+          </button>
+        </form>
+        <button
+          className="resend-btn"
+          onClick={handleResendOtp}
+          disabled={!canResend || loading}
+        >
+          {canResend ? 'Resend OTP' : `Resend in ${resendTimer}s`}
+        </button>
+      </div>
+      <style jsx>{`
+        .verify-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          background: linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%);
+        }
+        .verify-card {
+          background: #fff;
+          border-radius: 16px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+          padding: 2rem 2.5rem;
+          max-width: 400px;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        h2 {
+          margin-bottom: 1.2rem;
+          color: #2d3748;
+        }
+        label {
+          align-self: flex-start;
+          margin-top: 1.2rem;
+          margin-bottom: 0.3rem;
+          color: #4a5568;
+        }
+        input {
+          width: 100%;
+          padding: 0.6rem 0.8rem;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          margin-bottom: 1rem;
+          background: #f8fafc;
+          font-size: 1rem;
+          letter-spacing: 0.2em;
+          text-align: center;
+        }
+        button {
+          width: 100%;
+          padding: 0.8rem 0;
+          background: #3b82f6;
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          font-size: 1.05rem;
+          font-weight: 500;
+          cursor: pointer;
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+          transition: background 0.2s;
+        }
+        button.resend-btn {
+          background: #64748b;
+          color: #fff;
+          margin-top: 0.5rem;
+        }
+        button:disabled {
+          background: #a5b4fc;
+          cursor: not-allowed;
+        }
+        .error-msg {
+          width: 100%;
+          margin-bottom: 1rem;
+          color: #ef4444;
+          background: #fee2e2;
+          padding: 0.7rem;
+          border-radius: 4px;
+          text-align: center;
+          font-size: 0.98rem;
+        }
+        .success-msg {
+          width: 100%;
+          margin-bottom: 1rem;
+          color: #22c55e;
+          background: #dcfce7;
+          padding: 0.7rem;
+          border-radius: 4px;
+          text-align: center;
+          font-size: 0.98rem;
+        }
+        @media (max-width: 500px) {
+          .verify-card {
+            padding: 1rem 0.5rem;
+          }
+        }
+      `}</style>
     </div>
   );
 }
