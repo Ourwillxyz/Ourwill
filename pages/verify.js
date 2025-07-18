@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 import sha256 from 'crypto-js/sha256';
-import emailjs from 'emailjs-com';
+import emailjs from '@emailjs/browser';
 
 export default function Verify() {
   const [otpInput, setOtpInput] = useState('');
