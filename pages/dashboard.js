@@ -18,7 +18,7 @@ export default function Dashboard() {
       }
       setUser(authUser);
 
-      // Fetch voter details from Supabase (customize table/fields as needed)
+      // Fetch voter details from your table (customize as needed)
       const { data: voterData } = await supabase
         .from('voter')
         .select('*')
@@ -45,7 +45,10 @@ export default function Dashboard() {
   if (!user) return null;
 
   return (
-    <div style={{ maxWidth: 800, margin: '3rem auto', padding: 24, background: '#f7fafc', borderRadius: 10 }}>
+    <div style={{
+      maxWidth: 800, margin: '3rem auto', padding: 24,
+      background: '#f7fafc', borderRadius: 10
+    }}>
       <h1>🎉 Welcome, {voter?.username || user.email || 'Voter'}!</h1>
       <section style={{ marginTop: 30 }}>
         <h2>📌 Your Details</h2>
