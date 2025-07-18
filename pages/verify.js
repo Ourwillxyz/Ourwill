@@ -4,19 +4,19 @@ import { supabase } from '../src/supabaseClient';
 
 export default function Verify() {
   const router = useRouter();
-  const { email } = router.query;
+  const { email, mode } = router.query; // mode: 'login' or 'register'
 
   const [otpInput, setOtpInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Redirect if email is missing
+  // Redirect if email or mode is missing
   useEffect(() => {
-    if (!email) {
+    if (!email || !mode) {
       router.replace('/Login');
     }
-  }, [email, router]);
+  }, [email, mode, router]);
 
   // Handle OTP verification
   async function verifyOtp(e) {
@@ -60,30 +60,59 @@ export default function Verify() {
       return;
     }
 
-    // Insert login record into otp_login table
-    const { error: loginError } = await supabase
-      .from('otp_login')
-      .insert({
-        email,
-        login_time: new Date().toISOString(),
-      });
-
-    if (loginError) {
-      setErrorMsg('Login failed. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    setSuccessMsg('OTP verified! Redirecting to dashboard...');
-    // Set login state (localStorage, etc.)
+    // Shared: set login state (localStorage, etc.)
     localStorage.setItem('user_email', email);
 
-    setLoading(false);
+    // Branch by mode
+    if (mode === 'login') {
+      // Insert login record into otp_login table
+      const { error: loginError } = await supabase
+        .from('otp_login')
+        .insert({
+          email,
+          login_time: new Date().toISOString(),
+        });
 
-    // Redirect after short delay
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 1500);
+      if (loginError) {
+        setErrorMsg('Login failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      setSuccessMsg('OTP verified! Redirecting to dashboard...');
+      setLoading(false);
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1500);
+    } else if (mode === 'register') {
+      // Create voter/user record if needed (example: voter table)
+      // If user already exists, you might want to skip or update
+      const { data: voterExists } = await supabase
+        .from('voter')
+        .select('email')
+        .eq('email', email)
+        .single();
+
+      if (!voterExists) {
+        // Insert into voter table (customize fields as needed)
+        await supabase.from('voter').insert({
+          email,
+          registered_at: new Date().toISOString(),
+          // other fields if needed
+        });
+      }
+
+      setSuccessMsg('Registration complete! Redirecting...');
+      setLoading(false);
+
+      setTimeout(() => {
+        router.push('/dashboard'); // or /welcome, /profile, etc.
+      }, 1500);
+    } else {
+      setErrorMsg('Unknown verification mode.');
+      setLoading(false);
+    }
   }
 
   return (
