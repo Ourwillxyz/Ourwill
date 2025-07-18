@@ -199,6 +199,18 @@ export default function RegisterUser() {
     setLoading(false);
   };
 
+  // ADDITION: Common style for visible dropdowns
+  const dropdownStyle = {
+    width: '100%',
+    padding: '0.6rem 0.8rem',
+    background: '#ffffff',
+    color: '#000000',
+    border: '1px solid #cbd5e1',
+    borderRadius: '6px',
+    marginBottom: '0.8rem',
+    fontSize: '1rem'
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -242,37 +254,45 @@ export default function RegisterUser() {
         }}>{successMsg}</div>}
         <form onSubmit={handleSubmit}>
           <label htmlFor="email" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Email</label>
-          <input id="email" name="email" type="email" placeholder="Email" required value={formData.email} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }} />
+          <input id="email" name="email" type="email" placeholder="Email" required value={formData.email} onChange={handleChange} style={{ ...dropdownStyle }} />
           <label htmlFor="mobile" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Mobile</label>
-          <input id="mobile" name="mobile" type="text" placeholder="Mobile" required value={formData.mobile} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }} />
+          <input id="mobile" name="mobile" type="text" placeholder="Mobile" required value={formData.mobile} onChange={handleChange} style={{ ...dropdownStyle }} />
           <label htmlFor="username" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Username</label>
-          <input id="username" name="username" type="text" placeholder="Username" required value={formData.username} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }} />
+          <input id="username" name="username" type="text" placeholder="Username" required value={formData.username} onChange={handleChange} style={{ ...dropdownStyle }} />
           <label htmlFor="county" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>County</label>
-          <select id="county" name="county" required value={formData.county} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}>
-            <option value="">Select County</option>
+          <select id="county" name="county" required value={formData.county} onChange={handleChange} style={{ ...dropdownStyle }}>
+            <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select County</option>
             {counties.map((c) => (
-              <option key={c.county_code} value={c.county_code}>{c.county_name}</option>
+              <option key={c.county_code} value={c.county_code} style={{ background: '#ffffff', color: '#000000' }}>
+                {c.county_name}
+              </option>
             ))}
           </select>
           <label htmlFor="subcounty" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Subcounty</label>
-          <select id="subcounty" name="subcounty" required value={formData.subcounty} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}>
-            <option value="">Select Subcounty</option>
+          <select id="subcounty" name="subcounty" required value={formData.subcounty} onChange={handleChange} style={{ ...dropdownStyle }}>
+            <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select Subcounty</option>
             {subcounties.map((sc) => (
-              <option key={sc.subcounty_code} value={sc.subcounty_code}>{sc.subcounty_name}</option>
+              <option key={sc.subcounty_code} value={sc.subcounty_code} style={{ background: '#ffffff', color: '#000000' }}>
+                {sc.subcounty_name}
+              </option>
             ))}
           </select>
           <label htmlFor="ward" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Ward</label>
-          <select id="ward" name="ward" required value={formData.ward} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}>
-            <option value="">Select Ward</option>
+          <select id="ward" name="ward" required value={formData.ward} onChange={handleChange} style={{ ...dropdownStyle }}>
+            <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select Ward</option>
             {wards.map((w) => (
-              <option key={w.ward_code} value={w.ward_code}>{w.ward_name}</option>
+              <option key={w.ward_code} value={w.ward_code} style={{ background: '#ffffff', color: '#000000' }}>
+                {w.ward_name}
+              </option>
             ))}
           </select>
           <label htmlFor="polling_centre" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Polling Centre</label>
-          <select id="polling_centre" name="polling_centre" required value={formData.polling_centre} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}>
-            <option value="">Select Polling Centre</option>
+          <select id="polling_centre" name="polling_centre" required value={formData.polling_centre} onChange={handleChange} style={{ ...dropdownStyle }}>
+            <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select Polling Centre</option>
             {pollingCentres.map((pc) => (
-              <option key={pc.polling_centre_code} value={pc.polling_centre_code}>{pc.polling_centre_name}</option>
+              <option key={pc.polling_centre_code} value={pc.polling_centre_code} style={{ background: '#ffffff', color: '#000000' }}>
+                {pc.polling_centre_name}
+              </option>
             ))}
           </select>
           <button type="submit" disabled={loading} style={{
