@@ -16,6 +16,13 @@ export default function Login() {
     setError('');
     setLoading(true);
 
+    // Optional: validate email format client-side
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError('Please enter a valid email address.');
+      setLoading(false);
+      return;
+    }
+
     // Generate OTP
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
