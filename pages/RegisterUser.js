@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 import emailjs from '@emailjs/browser';
 import sha256 from 'crypto-js/sha256';
-import Image from 'next/image';
 
 export default function RegisterUser() {
   const router = useRouter();
@@ -189,6 +188,7 @@ export default function RegisterUser() {
         query: {
           email: formData.email,
           mobile: formData.mobile,
+          mode: 'register', // Pass mode here for verify page
         },
       });
     }, 1500);
@@ -197,14 +197,53 @@ export default function RegisterUser() {
   };
 
   return (
-    <div className="register-container">
-      <div className="register-card">
-        <Image src="/logo.png" alt="Logo" width={80} height={80} />
-        <h2>Voter Registration</h2>
-        {errorMsg && <div className="error-msg">{errorMsg}</div>}
-        {successMsg && <div className="success-msg">{successMsg}</div>}
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundImage: 'url("/kenya-flag.jpg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        padding: '2rem',
+      }}
+    >
+      <img src="/ourwill-logo.png" alt="OurWill Logo" style={{ width: '180px', marginBottom: '1.5rem' }} />
+
+      <div
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          padding: '2rem',
+          borderRadius: '10px',
+          width: '100%',
+          maxWidth: '400px',
+        }}
+      >
+        <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Voter Registration</h2>
+        {errorMsg && <div style={{
+          width: '100%',
+          marginBottom: '1rem',
+          color: '#ef4444',
+          background: '#fee2e2',
+          padding: '0.7rem',
+          borderRadius: '4px',
+          textAlign: 'center',
+          fontSize: '0.98rem',
+        }}>{errorMsg}</div>}
+        {successMsg && <div style={{
+          width: '100%',
+          marginBottom: '1rem',
+          color: '#22c55e',
+          background: '#dcfce7',
+          padding: '0.7rem',
+          borderRadius: '4px',
+          textAlign: 'center',
+          fontSize: '0.98rem',
+        }}>{successMsg}</div>}
         <form onSubmit={handleSubmit}>
-          <label htmlFor="email">Email</label>
+          <label htmlFor="email" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Email</label>
           <input
             id="email"
             name="email"
@@ -213,8 +252,9 @@ export default function RegisterUser() {
             required
             value={formData.email}
             onChange={handleChange}
+            style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}
           />
-          <label htmlFor="mobile">Mobile</label>
+          <label htmlFor="mobile" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Mobile</label>
           <input
             id="mobile"
             name="mobile"
@@ -223,8 +263,9 @@ export default function RegisterUser() {
             required
             value={formData.mobile}
             onChange={handleChange}
+            style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}
           />
-          <label htmlFor="username">Username</label>
+          <label htmlFor="username" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Username</label>
           <input
             id="username"
             name="username"
@@ -233,14 +274,16 @@ export default function RegisterUser() {
             required
             value={formData.username}
             onChange={handleChange}
+            style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}
           />
-          <label htmlFor="county">County</label>
+          <label htmlFor="county" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>County</label>
           <select
             id="county"
             name="county"
             required
             value={formData.county}
             onChange={handleChange}
+            style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}
           >
             <option value="">Select County</option>
             {counties.map((c) => (
@@ -249,13 +292,14 @@ export default function RegisterUser() {
               </option>
             ))}
           </select>
-          <label htmlFor="subcounty">Subcounty</label>
+          <label htmlFor="subcounty" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Subcounty</label>
           <select
             id="subcounty"
             name="subcounty"
             required
             value={formData.subcounty}
             onChange={handleChange}
+            style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}
           >
             <option value="">Select Subcounty</option>
             {subcounties.map((s) => (
@@ -264,13 +308,14 @@ export default function RegisterUser() {
               </option>
             ))}
           </select>
-          <label htmlFor="ward">Ward</label>
+          <label htmlFor="ward" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Ward</label>
           <select
             id="ward"
             name="ward"
             required
             value={formData.ward}
             onChange={handleChange}
+            style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}
           >
             <option value="">Select Ward</option>
             {wards.map((w) => (
@@ -279,13 +324,14 @@ export default function RegisterUser() {
               </option>
             ))}
           </select>
-          <label htmlFor="polling_centre">Polling Centre</label>
+          <label htmlFor="polling_centre" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Polling Centre</label>
           <select
             id="polling_centre"
             name="polling_centre"
             required
             value={formData.polling_centre}
             onChange={handleChange}
+            style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}
           >
             <option value="">Select Polling Centre</option>
             {pollingCentres.map((p) => (
@@ -294,92 +340,27 @@ export default function RegisterUser() {
               </option>
             ))}
           </select>
-          <button type="submit" disabled={loading}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '0.8rem 0',
+              background: '#3b82f6',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '1.05rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              marginTop: '1rem',
+            }}
+          >
             {loading ? 'Processing...' : 'Register'}
           </button>
         </form>
       </div>
-      <style jsx>{`
-        .register-container {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          min-height: 100vh;
-          background: linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%);
-        }
-        .register-card {
-          background: #fff;
-          border-radius: 16px;
-          box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-          padding: 2rem 2.5rem;
-          max-width: 400px;
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-        h2 {
-          margin-bottom: 1.4rem;
-          color: #2d3748;
-        }
-        label {
-          align-self: flex-start;
-          margin-top: 1rem;
-          margin-bottom: 0.3rem;
-          color: #4a5568;
-          font-size: 0.97rem;
-        }
-        input, select {
-          width: 100%;
-          padding: 0.6rem 0.8rem;
-          border: 1px solid #cbd5e1;
-          border-radius: 6px;
-          margin-bottom: 0.8rem;
-          background: #f8fafc;
-          font-size: 1rem;
-        }
-        button {
-          width: 100%;
-          padding: 0.8rem 0;
-          background: #3b82f6;
-          color: #fff;
-          border: none;
-          border-radius: 6px;
-          font-size: 1.05rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        button:disabled {
-          background: #a5b4fc;
-          cursor: not-allowed;
-        }
-        .error-msg {
-          width: 100%;
-          margin-bottom: 1rem;
-          color: #ef4444;
-          background: #fee2e2;
-          padding: 0.7rem;
-          border-radius: 4px;
-          text-align: center;
-          font-size: 0.98rem;
-        }
-        .success-msg {
-          width: 100%;
-          margin-bottom: 1rem;
-          color: #22c55e;
-          background: #dcfce7;
-          padding: 0.7rem;
-          border-radius: 4px;
-          text-align: center;
-          font-size: 0.98rem;
-        }
-        @media (max-width: 500px) {
-          .register-card {
-            padding: 1rem 0.5rem;
-          }
-        }
-      `}</style>
     </div>
   );
 }
