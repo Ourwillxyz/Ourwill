@@ -247,7 +247,6 @@ export default function RegisterUser() {
           fontSize: '0.98rem',
         }}>{successMsg}</div>}
         <form onSubmit={handleSubmit}>
-          {/* Form fields unchanged */}
           <label htmlFor="email" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Email</label>
           <input
             id="email"
