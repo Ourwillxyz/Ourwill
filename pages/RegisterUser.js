@@ -17,7 +17,7 @@ export default function RegisterUser() {
     county: '',
     subcounty: '',
     ward: '',
-    polling_centre: ''
+    polling_centre: '',
   });
 
   const [otp, setOtp] = useState('');
@@ -25,75 +25,121 @@ export default function RegisterUser() {
   const [canResend, setCanResend] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
 
+  // Fetch counties on mount
   useEffect(() => {
+    const fetchCounties = async () => {
+      const { data, error } = await supabase.from('counties').select();
+      if (error) {
+        alert('Failed to fetch counties');
+        return;
+      }
+      setCounties(data || []);
+    };
     fetchCounties();
   }, []);
 
+  // Fetch subcounties on county change
   useEffect(() => {
-    if (formData.county) fetchSubcounties();
+    const fetchSubcounties = async () => {
+      if (!formData.county) {
+        setSubcounties([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('subcounties')
+        .select()
+        .eq('county_code', formData.county);
+      if (error) {
+        alert('Failed to fetch subcounties');
+        return;
+      }
+      setSubcounties(data || []);
+    };
+    fetchSubcounties();
   }, [formData.county]);
 
+  // Fetch wards on subcounty change
   useEffect(() => {
-    if (formData.subcounty) fetchWards();
+    const fetchWards = async () => {
+      if (!formData.subcounty) {
+        setWards([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('wards')
+        .select()
+        .eq('subcounty_code', formData.subcounty);
+      if (error) {
+        alert('Failed to fetch wards');
+        return;
+      }
+      setWards(data || []);
+    };
+    fetchWards();
   }, [formData.subcounty]);
 
+  // Fetch polling centres on ward change
   useEffect(() => {
-    if (formData.ward) fetchPollingCentres();
+    const fetchPollingCentres = async () => {
+      if (!formData.ward) {
+        setPollingCentres([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('polling_centres')
+        .select()
+        .eq('ward_code', formData.ward);
+      if (error) {
+        alert('Failed to fetch polling centres');
+        return;
+      }
+      setPollingCentres(data || []);
+    };
+    fetchPollingCentres();
   }, [formData.ward]);
 
+  // Resend OTP timer
   useEffect(() => {
-    let timer;
     if (otpSent && resendTimer > 0) {
-      timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
     } else if (resendTimer === 0) {
       setCanResend(true);
     }
-    return () => clearTimeout(timer);
   }, [otpSent, resendTimer]);
-
-  const fetchCounties = async () => {
-    const { data, error } = await supabase.from('counties').select();
-    if (data) setCounties(data);
-  };
-
-  const fetchSubcounties = async () => {
-    const { data } = await supabase
-      .from('subcounties')
-      .select()
-      .eq('county_code', formData.county);
-    if (data) setSubcounties(data);
-  };
-
-  const fetchWards = async () => {
-    const { data } = await supabase
-      .from('wards')
-      .select()
-      .eq('subcounty_code', formData.subcounty);
-    if (data) setWards(data);
-  };
-
-  const fetchPollingCentres = async () => {
-    const { data } = await supabase
-      .from('polling_centres')
-      .select()
-      .eq('ward_code', formData.ward);
-    if (data) setPollingCentres(data);
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
+  };
+
+  const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+  const sendOtpEmail = async (email, passcode) => {
+    try {
+      await emailjs.send(
+        'service_21itetw',
+        'template_ks69v69',
+        { email, passcode },
+        'OrOyy74P28MfrgPhr'
+      );
+      return true;
+    } catch (err) {
+      alert('Failed to send OTP email');
+      return false;
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const passcode = Math.floor(100000 + Math.random() * 900000).toString();
+    const passcode = generateOtp();
     setOtp(passcode);
 
+    // Hash values
     const email_hash = sha256(formData.email).toString();
     const username_hash = sha256(formData.username).toString();
     const mobile_hash = sha256(formData.mobile).toString();
@@ -101,6 +147,7 @@ export default function RegisterUser() {
       formData.username + formData.email + formData.mobile
     ).toString();
 
+    // Store voter
     const { error } = await supabase.from('voter').insert([
       {
         email: formData.email,
@@ -114,8 +161,8 @@ export default function RegisterUser() {
         username_hash,
         mobile_hash,
         voter_hash,
-        status: 'pending'
-      }
+        status: 'pending',
+      },
     ]);
 
     if (error) {
@@ -123,15 +170,8 @@ export default function RegisterUser() {
       return;
     }
 
-    await emailjs.send(
-      'service_21itetw',
-      'template_ks69v69',
-      {
-        email: formData.email,
-        passcode: passcode
-      },
-      'OrOyy74P28MfrgPhr'
-    );
+    const sent = await sendOtpEmail(formData.email, passcode);
+    if (!sent) return;
 
     setOtpSent(true);
     setResendTimer(60);
@@ -142,18 +182,11 @@ export default function RegisterUser() {
   const resendOtp = async () => {
     if (!canResend) return;
 
-    const passcode = Math.floor(100000 + Math.random() * 900000).toString();
+    const passcode = generateOtp();
     setOtp(passcode);
 
-    await emailjs.send(
-      'service_21itetw',
-      'template_ks69v69',
-      {
-        email: formData.email,
-        passcode: passcode
-      },
-      'OrOyy74P28MfrgPhr'
-    );
+    const sent = await sendOtpEmail(formData.email, passcode);
+    if (!sent) return;
 
     setResendTimer(60);
     setCanResend(false);
@@ -169,13 +202,15 @@ export default function RegisterUser() {
         backgroundSize: 'contain',
         backgroundPosition: 'center',
         minHeight: '100vh',
-        padding: '2rem'
+        padding: '2rem',
       }}
     >
       <Image src="/logo.png" alt="Logo" width={100} height={100} />
       <h2>Voter Registration</h2>
       <form onSubmit={handleSubmit}>
+        <label htmlFor="email">Email</label>
         <input
+          id="email"
           name="email"
           type="email"
           placeholder="Email"
@@ -183,7 +218,9 @@ export default function RegisterUser() {
           value={formData.email}
           onChange={handleChange}
         />
+        <label htmlFor="mobile">Mobile</label>
         <input
+          id="mobile"
           name="mobile"
           type="tel"
           placeholder="Mobile"
@@ -191,7 +228,9 @@ export default function RegisterUser() {
           value={formData.mobile}
           onChange={handleChange}
         />
+        <label htmlFor="username">Username</label>
         <input
+          id="username"
           name="username"
           type="text"
           placeholder="Username"
@@ -199,7 +238,14 @@ export default function RegisterUser() {
           value={formData.username}
           onChange={handleChange}
         />
-        <select name="county" required onChange={handleChange}>
+        <label htmlFor="county">County</label>
+        <select
+          id="county"
+          name="county"
+          required
+          value={formData.county}
+          onChange={handleChange}
+        >
           <option value="">Select County</option>
           {counties.map((c) => (
             <option key={c.code} value={c.code}>
@@ -207,7 +253,14 @@ export default function RegisterUser() {
             </option>
           ))}
         </select>
-        <select name="subcounty" required onChange={handleChange}>
+        <label htmlFor="subcounty">Subcounty</label>
+        <select
+          id="subcounty"
+          name="subcounty"
+          required
+          value={formData.subcounty}
+          onChange={handleChange}
+        >
           <option value="">Select Subcounty</option>
           {subcounties.map((s) => (
             <option key={s.code} value={s.code}>
@@ -215,7 +268,14 @@ export default function RegisterUser() {
             </option>
           ))}
         </select>
-        <select name="ward" required onChange={handleChange}>
+        <label htmlFor="ward">Ward</label>
+        <select
+          id="ward"
+          name="ward"
+          required
+          value={formData.ward}
+          onChange={handleChange}
+        >
           <option value="">Select Ward</option>
           {wards.map((w) => (
             <option key={w.code} value={w.code}>
@@ -223,7 +283,14 @@ export default function RegisterUser() {
             </option>
           ))}
         </select>
-        <select name="polling_centre" required onChange={handleChange}>
+        <label htmlFor="polling_centre">Polling Centre</label>
+        <select
+          id="polling_centre"
+          name="polling_centre"
+          required
+          value={formData.polling_centre}
+          onChange={handleChange}
+        >
           <option value="">Select Polling Centre</option>
           {pollingCentres.map((p) => (
             <option key={p.code} value={p.code}>
