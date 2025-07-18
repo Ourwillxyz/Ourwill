@@ -140,35 +140,45 @@ export default function RegisterUser() {
       return;
     }
 
-    const otp = generateOtp();
+    // Check for duplicate email
+    const { data: existingEmailUser } = await supabase
+      .from('voter')
+      .select('id')
+      .eq('email', formData.email)
+      .single();
 
-    // Store voter data with status 'pending' and save OTP (plain text, not hash!)
-    const { error } = await supabase.from('voter').insert([
-      {
-        email: formData.email,
-        mobile: formData.mobile,
-        username: formData.username,
-        county: formData.county,
-        subcounty: formData.subcounty,
-        ward: formData.ward,
-        polling_centre: formData.polling_centre,
-        otp, // Store plain OTP value here
-        status: 'pending',
-      },
-    ]);
-
-    if (error) {
-      setErrorMsg('Registration failed: ' + error.message);
+    if (existingEmailUser) {
+      setErrorMsg('This email is already registered. Please use a different email or try logging in.');
       setLoading(false);
       return;
     }
 
+    const otp = generateOtp();
+
+    // Store OTP in otp_verification
+    const { error: otpError } = await supabase.from('otp_verification').insert([
+      {
+        email: formData.email,
+        otp,
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 min expiry
+        used: false,
+      },
+    ]);
+
+    if (otpError) {
+      setErrorMsg('Failed to store OTP: ' + otpError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Send OTP email
     const sent = await sendOtpEmail(formData.email, otp);
     if (!sent) {
       setLoading(false);
       return;
     }
 
+    // Pass registration details forward (user not yet created!)
     setSuccessMsg('OTP sent successfully! Redirecting to verification...');
     setTimeout(() => {
       router.push({
@@ -176,6 +186,11 @@ export default function RegisterUser() {
         query: {
           email: formData.email,
           mobile: formData.mobile,
+          username: formData.username,
+          county: formData.county,
+          subcounty: formData.subcounty,
+          ward: formData.ward,
+          polling_centre: formData.polling_centre,
           mode: 'register',
         },
       });
@@ -185,30 +200,25 @@ export default function RegisterUser() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundImage: 'url("/kenya-flag.jpg")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'column',
-        padding: '2rem',
-      }}
-    >
+    <div style={{
+      minHeight: '100vh',
+      backgroundImage: 'url("/kenya-flag.jpg")',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'column',
+      padding: '2rem',
+    }}>
       <img src="/ourwill-logo.png" alt="OurWill Logo" style={{ width: '180px', marginBottom: '1.5rem' }} />
-
-      <div
-        style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          padding: '2rem',
-          borderRadius: '10px',
-          width: '100%',
-          maxWidth: '400px',
-        }}
-      >
+      <div style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        padding: '2rem',
+        borderRadius: '10px',
+        width: '100%',
+        maxWidth: '400px',
+      }}>
         <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Voter Registration</h2>
         {errorMsg && <div style={{
           width: '100%',
@@ -231,36 +241,53 @@ export default function RegisterUser() {
           fontSize: '0.98rem',
         }}>{successMsg}</div>}
         <form onSubmit={handleSubmit}>
-          {/* ...form fields unchanged... */}
           <label htmlFor="email" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="Email"
-            required
-            value={formData.email}
-            onChange={handleChange}
-            style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}
-          />
-          {/* ...other form fields for mobile, username, county, subcounty, ward, polling_centre... */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.8rem 0',
-              background: '#3b82f6',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '1.05rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-              marginTop: '1rem',
-            }}
-          >
+          <input id="email" name="email" type="email" placeholder="Email" required value={formData.email} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }} />
+          <label htmlFor="mobile" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Mobile</label>
+          <input id="mobile" name="mobile" type="text" placeholder="Mobile" required value={formData.mobile} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }} />
+          <label htmlFor="username" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Username</label>
+          <input id="username" name="username" type="text" placeholder="Username" required value={formData.username} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }} />
+          <label htmlFor="county" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>County</label>
+          <select id="county" name="county" required value={formData.county} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}>
+            <option value="">Select County</option>
+            {counties.map((c) => (
+              <option key={c.county_code} value={c.county_code}>{c.county_name}</option>
+            ))}
+          </select>
+          <label htmlFor="subcounty" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Subcounty</label>
+          <select id="subcounty" name="subcounty" required value={formData.subcounty} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}>
+            <option value="">Select Subcounty</option>
+            {subcounties.map((sc) => (
+              <option key={sc.subcounty_code} value={sc.subcounty_code}>{sc.subcounty_name}</option>
+            ))}
+          </select>
+          <label htmlFor="ward" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Ward</label>
+          <select id="ward" name="ward" required value={formData.ward} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}>
+            <option value="">Select Ward</option>
+            {wards.map((w) => (
+              <option key={w.ward_code} value={w.ward_code}>{w.ward_name}</option>
+            ))}
+          </select>
+          <label htmlFor="polling_centre" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Polling Centre</label>
+          <select id="polling_centre" name="polling_centre" required value={formData.polling_centre} onChange={handleChange} style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '0.8rem', background: '#f8fafc', fontSize: '1rem' }}>
+            <option value="">Select Polling Centre</option>
+            {pollingCentres.map((pc) => (
+              <option key={pc.polling_centre_code} value={pc.polling_centre_code}>{pc.polling_centre_name}</option>
+            ))}
+          </select>
+          <button type="submit" disabled={loading} style={{
+            width: '100%',
+            padding: '0.8rem 0',
+            background: '#3b82f6',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '1.05rem',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+            marginTop: '1rem',
+          }}>
             {loading ? 'Processing...' : 'Register'}
           </button>
         </form>
