@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
-import emailjs from '@emailjs/browser';
 
 export default function RegisterUser() {
   const router = useRouter();
@@ -102,25 +101,6 @@ export default function RegisterUser() {
     }));
   };
 
-  // Generate a 6-digit OTP
-  const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
-
-  // Send OTP via EmailJS
-  const sendOtpEmail = async (email, otp) => {
-    try {
-      await emailjs.send(
-        'service_21itetw',
-        'template_ks69v69',
-        { email, passcode: otp },
-        'OrOyy74P28MfrgPhr'
-      );
-      return true;
-    } catch (err) {
-      setErrorMsg('Failed to send OTP email');
-      return false;
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -153,50 +133,24 @@ export default function RegisterUser() {
       return;
     }
 
-    const otp = generateOtp();
+    // Send Magic Link for registration via Supabase
+    const { error } = await supabase.auth.signInWithOtp({
+      email: formData.email,
+      options: {
+        // shouldCreateUser: true, // uncomment if you want to allow sign-up via magic link
+        emailRedirectTo: `${window.location.origin}/register-continue` // or your desired redirect page
+      }
+    });
 
-    // Store OTP in otp_verification
-    const { error: otpError } = await supabase.from('otp_verification').insert([
-      {
-        email: formData.email,
-        otp,
-        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 min expiry
-        used: false,
-      },
-    ]);
-
-    if (otpError) {
-      setErrorMsg('Failed to store OTP: ' + otpError.message);
+    if (error) {
+      setErrorMsg('Failed to send registration link: ' + error.message);
       setLoading(false);
       return;
     }
 
-    // Send OTP email
-    const sent = await sendOtpEmail(formData.email, otp);
-    if (!sent) {
-      setLoading(false);
-      return;
-    }
-
-    // Pass registration details forward (user not yet created!)
-    setSuccessMsg('OTP sent successfully! Redirecting to verification...');
-    setTimeout(() => {
-      router.push({
-        pathname: '/verify',
-        query: {
-          email: formData.email,
-          mobile: formData.mobile,
-          username: formData.username,
-          county: formData.county,
-          subcounty: formData.subcounty,
-          ward: formData.ward,
-          polling_centre: formData.polling_centre,
-          mode: 'register',
-        },
-      });
-    }, 1500);
-
+    setSuccessMsg('A registration link has been sent! Please check your email and follow the link to continue.');
     setLoading(false);
+    // Optionally redirect or show instructions; here we keep the user on the page.
   };
 
   // ADDITION: Common style for visible dropdowns
@@ -311,6 +265,14 @@ export default function RegisterUser() {
             {loading ? 'Processing...' : 'Register'}
           </button>
         </form>
+        <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
+          <p>
+            <strong>Note:</strong> To continue, go to your email and follow the registration link we sent you.
+          </p>
+          <p>
+            If you don't see the email, check your spam or promotions folder.
+          </p>
+        </div>
       </div>
     </div>
   );
