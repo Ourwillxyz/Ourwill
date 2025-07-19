@@ -6,6 +6,37 @@ import { supabase } from '../src/supabaseClient';
 const scaleFont = (base, min, max, scale = 1) =>
   `clamp(${min}px, ${base * scale}vw, ${max}px)`;
 
+// Helper: Insert voter on first login if not present
+const ensureVoterRecord = async (user) => {
+  if (!user) return null;
+
+  // Check if voter exists by email
+  const { data: existingVoter, error: voterError } = await supabase
+    .from('voter')
+    .select('*')
+    .eq('email', user.email)
+    .single();
+
+  if (!existingVoter) {
+    // Insert voter record (add more fields as needed)
+    const { error: insertError, data: inserted } = await supabase.from('voter').insert([
+      {
+        auth_user_id: user.id,
+        email: user.email,
+        username: user.email.split('@')[0]
+        // Add more fields here if needed (e.g., mobile, county, etc.)
+      }
+    ]).select().single();
+    if (insertError) {
+      console.error('Error inserting voter:', insertError);
+      return null;
+    }
+    return inserted;
+  } else {
+    return existingVoter;
+  }
+};
+
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -24,13 +55,9 @@ export default function Dashboard() {
       }
       setUser(user);
 
-      // Fetch voter details
-      const { data: voterData } = await supabase
-        .from('voter')
-        .select('*')
-        .eq('email', user.email)
-        .single();
-      setVoter(voterData);
+      // Ensure voter record exists after magic link login
+      const voterRecord = await ensureVoterRecord(user);
+      setVoter(voterRecord);
 
       // Fetch ongoing polls
       const { data: ongoingData } = await supabase
