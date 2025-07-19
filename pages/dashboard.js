@@ -2,34 +2,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 
-// Simple inline bar chart component
-function BarChart({ data }) {
-  const max = Math.max(...data.map(d => d.value), 1);
-  return (
-    <div style={{ padding: '1rem 0' }}>
-      <h4 style={{ marginBottom: 8 }}>Recent Voter Reasons (Ideology vs. Monetary Gain)</h4>
-      {data.map((d) => (
-        <div key={d.label} style={{ marginBottom: 6 }}>
-          <span style={{ display: 'inline-block', width: 100 }}>{d.label}</span>
-          <div style={{ display: 'inline-block', verticalAlign: 'middle', height: 18, background: '#4f46e5', borderRadius: 4, width: `${(d.value / max) * 200}px` }} />
-          <span style={{ marginLeft: 12 }}>{d.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [voter, setVoter] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [polls, setPolls] = useState([]);
+  const [ongoingPolls, setOngoingPolls] = useState([]);
   const [upcomingPolls, setUpcomingPolls] = useState([]);
-  const [chartData, setChartData] = useState([
-    { label: 'Ideology', value: 0 },
-    { label: 'Monetary Gain', value: 0 }
-  ]);
+  const [closedPolls, setClosedPolls] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -48,25 +28,12 @@ export default function Dashboard() {
         .single();
       setVoter(voterData);
 
-      // Fetch bar chart data (example: ideology vs monetary gain)
-      // Replace with your actual table/columns
-      const { data: reasonsData } = await supabase
-        .from('voting_reason')
-        .select('reason, count')
-        .in('reason', ['Ideology', 'Monetary Gain']);
-      if (reasonsData) {
-        setChartData([
-          { label: 'Ideology', value: reasonsData.find(d => d.reason === 'Ideology')?.count || 0 },
-          { label: 'Monetary Gain', value: reasonsData.find(d => d.reason === 'Monetary Gain')?.count || 0 }
-        ]);
-      }
-
       // Fetch ongoing polls
-      const { data: pollData } = await supabase
+      const { data: ongoingData } = await supabase
         .from('polls')
         .select('*')
         .eq('status', 'ongoing');
-      setPolls(pollData || []);
+      setOngoingPolls(ongoingData || []);
 
       // Fetch upcoming polls
       const { data: upcomingData } = await supabase
@@ -74,6 +41,13 @@ export default function Dashboard() {
         .select('*')
         .eq('status', 'upcoming');
       setUpcomingPolls(upcomingData || []);
+
+      // Fetch closed polls
+      const { data: closedData } = await supabase
+        .from('polls')
+        .select('*')
+        .eq('status', 'closed');
+      setClosedPolls(closedData || []);
 
       setLoading(false);
     };
@@ -99,131 +73,243 @@ export default function Dashboard() {
   // Extract username from email
   const username = user.email.split('@')[0];
 
+  // Helper components
+  const voterInfo = (
+    <div style={{
+      background: '#fff',
+      padding: '1.2rem 1.1rem',
+      borderRadius: '10px',
+      boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
+      marginBottom: '1.4rem',
+      width: '100%',
+      minHeight: 210,
+    }}>
+      <h3 style={{ marginBottom: 12 }}>Voter Information</h3>
+      <p><strong>Email:</strong> {user.email}</p>
+      <p><strong>Mobile:</strong> {voter?.mobile || <em>Not set</em>}</p>
+      <p><strong>Username:</strong> {voter?.username || username}</p>
+      <p><strong>County:</strong> {voter?.county || <em>Not set</em>}</p>
+      <p><strong>Subcounty:</strong> {voter?.subcounty || <em>Not set</em>}</p>
+      <p><strong>Ward:</strong> {voter?.ward || <em>Not set</em>}</p>
+      <p><strong>Polling Centre:</strong> {voter?.polling_centre || <em>Not set</em>}</p>
+      <button
+        style={{
+          marginTop: 20,
+          padding: '0.6rem 1.1rem',
+          background: '#4f46e5',
+          color: '#fff',
+          borderRadius: '7px',
+          border: 'none',
+          fontWeight: '500',
+          fontSize: '1rem',
+          cursor: 'pointer'
+        }}
+        onClick={() => router.push('/update-profile')}
+      >
+        Update Profile
+      </button>
+    </div>
+  );
+
+  const pollingCTA = (
+    <div style={{
+      background: '#fff',
+      padding: '1.2rem 1.1rem',
+      borderRadius: '10px',
+      boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
+      marginBottom: '1.4rem',
+      width: '100%',
+      minHeight: 210,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between'
+    }}>
+      <h3 style={{ marginBottom: 12 }}>Ready to Vote?</h3>
+      <p>
+        <strong>Your voice matters!</strong><br />
+        Participate in ongoing polls and make a difference.<br />
+        <span style={{ color: '#4f46e5', fontWeight: 500 }}>
+          Vote based on your values and vision, not monetary gain.
+        </span>
+      </p>
+      <button
+        style={{
+          marginTop: 20,
+          padding: '0.7rem 1.2rem',
+          background: '#16a34a',
+          color: '#fff',
+          borderRadius: '7px',
+          border: 'none',
+          fontWeight: '500',
+          fontSize: '1rem',
+          cursor: 'pointer',
+          alignSelf: 'flex-start'
+        }}
+        onClick={() => router.push('/polls')}
+      >
+        Go to Polls
+      </button>
+    </div>
+  );
+
+  const closedPollsSection = (
+    <div style={{
+      background: '#fff',
+      padding: '1.2rem 1.1rem',
+      borderRadius: '10px',
+      boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
+      minHeight: 210,
+      width: '100%',
+    }}>
+      <h3 style={{ marginBottom: 12 }}>Closed Polls</h3>
+      {closedPolls.length === 0 ? (
+        <p>No closed polls yet.</p>
+      ) : (
+        <ul>
+          {closedPolls.map(poll => (
+            <li key={poll.id} style={{ marginBottom: 12 }}>
+              <strong>{poll.title}</strong>
+              <br />
+              {poll.description}
+              <br />
+              <span style={{ fontSize: '0.95em', color: '#555' }}>
+                Ended: {poll.end_date ? new Date(poll.end_date).toLocaleString() : 'TBD'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  const upcomingPollsSection = (
+    <div style={{
+      background: '#fff',
+      padding: '1.2rem 1.1rem',
+      borderRadius: '10px',
+      boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
+      minHeight: 210,
+      width: '100%',
+    }}>
+      <h3 style={{ marginBottom: 12 }}>Upcoming Polls</h3>
+      {upcomingPolls.length === 0 ? (
+        <p>No upcoming polls scheduled.</p>
+      ) : (
+        <ul>
+          {upcomingPolls.map(poll => (
+            <li key={poll.id} style={{ marginBottom: 12 }}>
+              <strong>{poll.title}</strong>
+              <br />
+              {poll.description}
+              <br />
+              <span style={{ fontSize: '0.95em', color: '#555' }}>
+                Starts: {poll.start_date ? new Date(poll.start_date).toLocaleString() : 'TBD'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   return (
     <div style={{
       minHeight: '100vh',
       background: '#f5f6fa',
-      padding: '2rem',
+      padding: '0',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center'
     }}>
-      <img src="/ourwill-logo.png" alt="Logo" style={{ width: 120, marginBottom: 24 }} />
-
-      <h1 style={{ fontSize: '2rem', marginBottom: '1rem', color: '#4733a8' }}>
-        Welcome, {username}!
-      </h1>
-
+      {/* Top logo & flag */}
       <div style={{
-        background: '#fff',
-        padding: '1.5rem 2rem',
-        borderRadius: '10px',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
-        marginBottom: '2rem',
         width: '100%',
-        maxWidth: 480
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexDirection: 'column',
+        marginBottom: '2rem',
+        position: 'relative'
       }}>
-        <h3 style={{ marginBottom: 12 }}>Your Voter Information</h3>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>Mobile:</strong> {voter?.mobile || <em>Not set</em>}</p>
-        <p><strong>Username:</strong> {voter?.username || username}</p>
-        <p><strong>County:</strong> {voter?.county || <em>Not set</em>}</p>
-        <p><strong>Subcounty:</strong> {voter?.subcounty || <em>Not set</em>}</p>
-        <p><strong>Ward:</strong> {voter?.ward || <em>Not set</em>}</p>
-        <p><strong>Polling Centre:</strong> {voter?.polling_centre || <em>Not set</em>}</p>
-        <button
-          style={{
-            marginTop: 20,
-            padding: '0.8rem 1.3rem',
-            background: '#4f46e5',
-            color: '#fff',
-            borderRadius: '7px',
-            border: 'none',
-            fontWeight: '500',
-            fontSize: '1.05rem',
-            cursor: 'pointer'
-          }}
-          onClick={() => router.push('/update-profile')}
-        >
-          Update Profile
-        </button>
+        <img src="/kenya-flag.jpg" alt="Kenya Flag" style={{ width: '100%', height: '120px', objectFit: 'cover', marginBottom: '-50px' }} />
+        <img src="/ourwill-logo.png" alt="Logo" style={{
+          width: 120,
+          marginTop: '-50px',
+          background: '#fff',
+          borderRadius: '15px',
+          boxShadow: '0 0 16px rgba(0,0,0,0.08)',
+          zIndex: 1,
+          padding: '0.6rem'
+        }} />
       </div>
 
+      {/* 2x2 grid dashboard */}
       <div style={{
-        background: '#fff',
-        padding: '1.5rem 2rem',
-        borderRadius: '10px',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
-        marginBottom: '2rem',
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gridTemplateRows: '1fr 1fr',
+        gap: '2.1rem',
         width: '100%',
-        maxWidth: 480
+        maxWidth: 1040,
+        margin: '0 auto',
+        marginBottom: '2.5rem'
       }}>
-        <h3>Sincere Voting Matters</h3>
-        <p>
-          <strong>Make your choice based on ideology and vision, not monetary gain.</strong><br />
-          Your vote can shape the future. Avoid short-term temptations and choose leaders who share your values and goals for your community.
-        </p>
-        <BarChart data={chartData} />
+        {/* Row 1 */}
+        <div>{voterInfo}</div>
+        <div>{pollingCTA}</div>
+        {/* Row 2 */}
+        <div>{closedPollsSection}</div>
+        <div>{upcomingPollsSection}</div>
       </div>
 
+      {/* Bottom ongoing poll section */}
       <div style={{
+        width: '100%',
+        maxWidth: 700,
         background: '#fff',
-        padding: '1.5rem 2rem',
+        padding: '1.3rem 1rem',
         borderRadius: '10px',
         boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
         marginBottom: '2rem',
-        width: '100%',
-        maxWidth: 480
+        textAlign: 'center'
       }}>
-        <h3>Ongoing Polls</h3>
-        {polls.length === 0 ? (
-          <p>No ongoing polls at this moment.</p>
+        <h3>Ongoing Poll</h3>
+        {ongoingPolls.length === 0 ? (
+          <p>No ongoing polls at the moment.</p>
         ) : (
-          <ul>
-            {polls.map((poll) => (
-              <li key={poll.id}>
-                <strong>{poll.title}</strong>
-                <br />
-                {poll.description}
-                <br />
-                <span style={{ fontSize: '0.95em', color: '#555' }}>
-                  Ends: {poll.end_date ? new Date(poll.end_date).toLocaleString() : 'TBD'}
-                </span>
-              </li>
-            ))}
-          </ul>
+          ongoingPolls.map(poll => (
+            <div key={poll.id} style={{ marginBottom: 12 }}>
+              <strong>{poll.title}</strong>
+              <br />
+              {poll.description}
+              <br />
+              <span style={{ fontSize: '0.95em', color: '#555' }}>
+                Ends: {poll.end_date ? new Date(poll.end_date).toLocaleString() : 'TBD'}
+              </span>
+              <br />
+              <button
+                style={{
+                  marginTop: 10,
+                  padding: '0.6rem 1.1rem',
+                  background: '#4f46e5',
+                  color: '#fff',
+                  borderRadius: '7px',
+                  border: 'none',
+                  fontWeight: '500',
+                  fontSize: '1rem',
+                  cursor: 'pointer'
+                }}
+                onClick={() => router.push(`/polls/${poll.id}`)}
+              >
+                Vote Now
+              </button>
+            </div>
+          ))
         )}
       </div>
 
-      <div style={{
-        background: '#fff',
-        padding: '1.5rem 2rem',
-        borderRadius: '10px',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
-        width: '100%',
-        maxWidth: 480
-      }}>
-        <h3>Upcoming Polls</h3>
-        {upcomingPolls.length === 0 ? (
-          <p>No upcoming polls scheduled.</p>
-        ) : (
-          <ul>
-            {upcomingPolls.map((poll) => (
-              <li key={poll.id}>
-                <strong>{poll.title}</strong>
-                <br />
-                {poll.description}
-                <br />
-                <span style={{ fontSize: '0.95em', color: '#555' }}>
-                  Starts: {poll.start_date ? new Date(poll.start_date).toLocaleString() : 'TBD'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div style={{ marginTop: 16 }}>
+      {/* Logout */}
+      <div style={{ marginBottom: '1rem' }}>
         <button
           style={{
             background: '#ef4444',
