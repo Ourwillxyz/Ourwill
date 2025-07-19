@@ -4,20 +4,35 @@ import { supabase } from '../src/supabaseClient';
 
 export default function Verify() {
   const router = useRouter();
-  const { email = '', mode = '' } = router.query;
+  // Read query parameters robustly
+  const [queryReady, setQueryReady] = useState(false);
+  const [email, setEmail] = useState('');
+  const [mode, setMode] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // For SSR or NEXT router.query fallback
+  // Read query params once they're available
   useEffect(() => {
-    if (!mode && typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('mode')) router.replace({ pathname: '/verify', query: { email: params.get('email'), mode: params.get('mode') } });
+    if (router.isReady) {
+      let qEmail = router.query.email || '';
+      let qMode = router.query.mode || '';
+      // Fallback for SSR/hard refresh
+      if (!qEmail || !qMode) {
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          qEmail = params.get('email') || '';
+          qMode = params.get('mode') || '';
+        }
+      }
+      setEmail(qEmail);
+      setMode(qMode);
+      setQueryReady(true);
     }
-  }, [mode, router]);
+  }, [router.isReady, router.query]);
 
+  // Handle OTP verification
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -25,16 +40,25 @@ export default function Verify() {
     setErrorMsg('');
 
     if (!otp) {
-      setErrorMsg('Please enter OTP');
+      setErrorMsg('Please enter the OTP code.');
+      setLoading(false);
+      return;
+    }
+    if (!email) {
+      setErrorMsg('Email is missing. Please return to the previous step.');
+      setLoading(false);
+      return;
+    }
+    if (!mode) {
+      setErrorMsg('Verification mode missing. Please restart the process.');
       setLoading(false);
       return;
     }
 
     try {
-      // Example: custom OTP verification logic (replace with your own if using a custom table)
-      // If using Supabase Auth, you can use signInWithOtp:
+      // LOGIN MODE: Use Supabase Auth OTP verification (sets session)
       if (mode === 'login') {
-        // Attempt login via Supabase Auth with OTP
+        // Use Supabase's verifyOtp for email-based OTP
         const { data, error } = await supabase.auth.verifyOtp({
           email,
           token: otp,
@@ -45,6 +69,7 @@ export default function Verify() {
           setLoading(false);
           return;
         }
+        // If session is set, redirect to dashboard
         setSuccessMsg('Login successful! Redirecting to dashboard...');
         setLoading(false);
         setTimeout(() => {
@@ -53,10 +78,9 @@ export default function Verify() {
         return;
       }
 
-      // Registration flow: custom verification logic
+      // REGISTRATION MODE: Example custom logic (simulate success, or call your own backend)
       if (mode === 'register') {
-        // Example: update your OTP table, mark as used, create user, etc.
-        // For this template, we'll just simulate success.
+        // You can add your own custom verification here if needed
         setSuccessMsg('Verification successful! You are now registered.');
         setLoading(false);
         setTimeout(() => {
@@ -65,33 +89,33 @@ export default function Verify() {
         return;
       }
 
-      // Fallback: just show generic message and redirect to login
+      // FALLBACK: Any other mode, redirect to login
       setSuccessMsg('Verification successful.');
       setLoading(false);
       setTimeout(() => {
         router.push('/login');
       }, 2000);
-
     } catch (err) {
       setErrorMsg('Verification error: ' + err.message);
       setLoading(false);
     }
   };
 
+  // UI
   return (
     <div style={{
       minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#fafcff'
+      background: '#f8faff'
     }}>
       <form onSubmit={handleSubmit} style={{
         background: '#fff',
         padding: '2rem 2.5rem',
         borderRadius: '10px',
         boxShadow: '0 3px 20px rgba(0,0,0,0.09)',
-        minWidth: '320px',
+        minWidth: '340px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center'
@@ -99,7 +123,12 @@ export default function Verify() {
         <h2 style={{ marginBottom: '1.5rem', fontWeight: '500' }}>
           Verify your email
         </h2>
-        <p style={{ marginBottom: '1rem', color: '#444', fontSize: '1.05rem' }}>
+        <p style={{
+          marginBottom: '1rem',
+          color: '#444',
+          fontSize: '1.05rem',
+          textAlign: 'center'
+        }}>
           Enter the OTP sent to <strong>{email || 'your email'}</strong>
         </p>
         <input
@@ -116,13 +145,14 @@ export default function Verify() {
             border: '1px solid #ccc',
             marginBottom: '1rem',
             width: '100%',
+            letterSpacing: '0.12em',
             textAlign: 'center'
           }}
           disabled={loading}
         />
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !queryReady}
           style={{
             background: '#0984e3',
             color: '#fff',
@@ -130,7 +160,7 @@ export default function Verify() {
             borderRadius: '6px',
             padding: '0.7rem 1.6rem',
             fontSize: '1.08rem',
-            cursor: loading ? 'not-allowed' : 'pointer'
+            cursor: loading || !queryReady ? 'not-allowed' : 'pointer'
           }}
         >
           {loading ? 'Verifying...' : 'Verify'}
