@@ -212,122 +212,139 @@ export default function Dashboard() {
     </div>
   );
 
+  // Kenyan flag background, opaque overlay
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f5f6fa',
-      padding: '0',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center'
+      width: '100vw',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
-      {/* Top logo & flag */}
+      {/* Opaque Kenyan flag background */}
       <div style={{
-        width: '100%',
+        position: 'fixed',
+        inset: 0,
+        zIndex: 0,
+        backgroundImage: 'url("/kenya-flag.jpg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        opacity: 0.17,
+        pointerEvents: 'none'
+      }} />
+      {/* Main content */}
+      <div style={{
+        position: 'relative',
+        zIndex: 1,
+        minHeight: '100vh',
+        width: '100vw',
         display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
         flexDirection: 'column',
-        marginBottom: '2rem',
-        position: 'relative'
+        alignItems: 'center'
       }}>
-        <img src="/kenya-flag.jpg" alt="Kenya Flag" style={{ width: '100%', height: '120px', objectFit: 'cover', marginBottom: '-50px' }} />
-        <img src="/ourwill-logo.png" alt="Logo" style={{
-          width: 120,
-          marginTop: '-50px',
+        {/* Top logo & flag */}
+        <div style={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          flexDirection: 'column',
+          marginBottom: '2rem',
+          position: 'relative'
+        }}>
+          <img src="/ourwill-logo.png" alt="Logo" style={{
+            width: 120,
+            background: '#fff',
+            borderRadius: '15px',
+            boxShadow: '0 0 16px rgba(0,0,0,0.08)',
+            zIndex: 1,
+            padding: '0.6rem',
+            marginBottom: '0.7rem'
+          }} />
+        </div>
+        {/* 2x2 grid dashboard */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gap: '2.1rem',
+          width: '100%',
+          maxWidth: 1040,
+          margin: '0 auto',
+          marginBottom: '2.5rem'
+        }}>
+          {/* Row 1 */}
+          <div>{voterInfo}</div>
+          <div>{pollingCTA}</div>
+          {/* Row 2 */}
+          <div>{closedPollsSection}</div>
+          <div>{upcomingPollsSection}</div>
+        </div>
+        {/* Bottom ongoing poll section */}
+        <div style={{
+          width: '100%',
+          maxWidth: 700,
           background: '#fff',
-          borderRadius: '15px',
-          boxShadow: '0 0 16px rgba(0,0,0,0.08)',
-          zIndex: 1,
-          padding: '0.6rem'
-        }} />
-      </div>
-
-      {/* 2x2 grid dashboard */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gridTemplateRows: '1fr 1fr',
-        gap: '2.1rem',
-        width: '100%',
-        maxWidth: 1040,
-        margin: '0 auto',
-        marginBottom: '2.5rem'
-      }}>
-        {/* Row 1 */}
-        <div>{voterInfo}</div>
-        <div>{pollingCTA}</div>
-        {/* Row 2 */}
-        <div>{closedPollsSection}</div>
-        <div>{upcomingPollsSection}</div>
-      </div>
-
-      {/* Bottom ongoing poll section */}
-      <div style={{
-        width: '100%',
-        maxWidth: 700,
-        background: '#fff',
-        padding: '1.3rem 1rem',
-        borderRadius: '10px',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
-        marginBottom: '2rem',
-        textAlign: 'center'
-      }}>
-        <h3>Ongoing Poll</h3>
-        {ongoingPolls.length === 0 ? (
-          <p>No ongoing polls at the moment.</p>
-        ) : (
-          ongoingPolls.map(poll => (
-            <div key={poll.id} style={{ marginBottom: 12 }}>
-              <strong>{poll.title}</strong>
-              <br />
-              {poll.description}
-              <br />
-              <span style={{ fontSize: '0.95em', color: '#555' }}>
-                Ends: {poll.end_date ? new Date(poll.end_date).toLocaleString() : 'TBD'}
-              </span>
-              <br />
-              <button
-                style={{
-                  marginTop: 10,
-                  padding: '0.6rem 1.1rem',
-                  background: '#4f46e5',
-                  color: '#fff',
-                  borderRadius: '7px',
-                  border: 'none',
-                  fontWeight: '500',
-                  fontSize: '1rem',
-                  cursor: 'pointer'
-                }}
-                onClick={() => router.push(`/polls/${poll.id}`)}
-              >
-                Vote Now
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Logout */}
-      <div style={{ marginBottom: '1rem' }}>
-        <button
-          style={{
-            background: '#ef4444',
-            color: '#fff',
-            padding: '0.7rem 1.2rem',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '1rem',
-            fontWeight: '500',
-            cursor: 'pointer'
-          }}
-          onClick={async () => {
-            await supabase.auth.signOut();
-            router.push('/login');
-          }}
-        >
-          Log Out
-        </button>
+          padding: '1.3rem 1rem',
+          borderRadius: '10px',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
+          marginBottom: '2rem',
+          textAlign: 'center'
+        }}>
+          <h3>Ongoing Poll</h3>
+          {ongoingPolls.length === 0 ? (
+            <p>No ongoing polls at the moment.</p>
+          ) : (
+            ongoingPolls.map(poll => (
+              <div key={poll.id} style={{ marginBottom: 12 }}>
+                <strong>{poll.title}</strong>
+                <br />
+                {poll.description}
+                <br />
+                <span style={{ fontSize: '0.95em', color: '#555' }}>
+                  Ends: {poll.end_date ? new Date(poll.end_date).toLocaleString() : 'TBD'}
+                </span>
+                <br />
+                <button
+                  style={{
+                    marginTop: 10,
+                    padding: '0.6rem 1.1rem',
+                    background: '#4f46e5',
+                    color: '#fff',
+                    borderRadius: '7px',
+                    border: 'none',
+                    fontWeight: '500',
+                    fontSize: '1rem',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => router.push(`/polls/${poll.id}`)}
+                >
+                  Vote Now
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+        {/* Logout */}
+        <div style={{ marginBottom: '1rem' }}>
+          <button
+            style={{
+              background: '#ef4444',
+              color: '#fff',
+              padding: '0.7rem 1.2rem',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '1rem',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push('/login');
+            }}
+          >
+            Log Out
+          </button>
+        </div>
       </div>
     </div>
   );
