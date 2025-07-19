@@ -137,8 +137,7 @@ export default function RegisterUser() {
     const { error } = await supabase.auth.signInWithOtp({
       email: formData.email,
       options: {
-        // shouldCreateUser: true, // uncomment if you want to allow sign-up via magic link
-        emailRedirectTo: `${window.location.origin}/register-continue` // or your desired redirect page
+        emailRedirectTo: `${window.location.origin}/dashboard`
       }
     });
 
@@ -150,10 +149,9 @@ export default function RegisterUser() {
 
     setSuccessMsg('A registration link has been sent! Please check your email and follow the link to continue.');
     setLoading(false);
-    // Optionally redirect or show instructions; here we keep the user on the page.
+    // Do NOT redirect. User must check email and click the magic link.
   };
 
-  // ADDITION: Common style for visible dropdowns
   const dropdownStyle = {
     width: '100%',
     padding: '0.6rem 0.8rem',
