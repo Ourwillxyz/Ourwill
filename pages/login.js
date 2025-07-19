@@ -25,17 +25,136 @@ export default function Login() {
   };
 
   return (
-    <form onSubmit={handleLogin}>
-      <input
-        type="email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        placeholder="Email"
-        required
-        disabled={loading}
-      />
-      <button type="submit" disabled={loading || !email}>Send OTP</button>
-      {msg && <div>{msg}</div>}
-    </form>
+    <div style={{
+      minHeight: '100vh',
+      width: '100vw',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Main background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        background: 'linear-gradient(135deg, #ece9f7 0%, #fff 100%)',
+        zIndex: 0
+      }} />
+      {/* Opaque overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        background: 'rgba(42, 43, 53, 0.52)', // semi-transparent black
+        zIndex: 1
+      }} />
+      {/* Centered login box */}
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        zIndex: 2
+      }}>
+        <div style={{
+          maxWidth: 400,
+          width: '100%',
+          padding: 32,
+          borderRadius: 16,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.17)',
+          background: '#fff',
+          textAlign: 'center',
+          position: 'relative'
+        }}>
+          {/* Logo and Flag Section in a row */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 24,
+            gap: 16
+          }}>
+            <img
+              src="/ourwill-logo.png"
+              alt="OurWill Logo"
+              style={{
+                width: 80,
+                height: 'auto',
+                borderRadius: 12,
+                boxShadow: '0 2px 8px rgba(79,70,229,0.08)'
+              }}
+            />
+            <img
+              src="/kenya-flag.jpg"
+              alt="Kenya Flag"
+              style={{
+                width: 48,
+                height: 32,
+                borderRadius: 6,
+                border: '1px solid #e5e7eb',
+                objectFit: 'cover',
+                boxShadow: '0 2px 8px rgba(79,70,229,0.04)'
+              }}
+            />
+          </div>
+          <h2 style={{
+            margin: '0 0 16px 0',
+            fontWeight: 700,
+            fontSize: '1.6rem',
+            color: '#4733a8'
+          }}>
+            Login to OurWill
+          </h2>
+          <form onSubmit={handleLogin}>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Enter your email address"
+              required
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                marginBottom: 16,
+                borderRadius: 8,
+                border: '1px solid #d1d5db',
+                fontSize: '1rem',
+                background: '#f7f7fa'
+              }}
+            />
+            <button
+              type="submit"
+              disabled={loading || !email}
+              style={{
+                width: '100%',
+                padding: '12px 0',
+                borderRadius: 8,
+                border: 'none',
+                background: loading ? '#a5b4fc' : '#4f46e5',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: '1rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'background 0.2s'
+              }}
+            >
+              {loading ? 'Sending...' : 'Send OTP'}
+            </button>
+            {msg && (
+              <div style={{
+                marginTop: 16,
+                color: msg.startsWith('Error') ? '#dc2626' : '#4f46e5',
+                fontWeight: 500
+              }}>
+                {msg}
+              </div>
+            )}
+          </form>
+        </div>
+      </div>
+    </div>
   );
 }
