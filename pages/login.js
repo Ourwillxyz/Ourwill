@@ -12,14 +12,14 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setMsg('');
-    // Send OTP via Supabase Auth
+    // Send Magic Link via Supabase Auth
     const { error } = await supabase.auth.signInWithOtp({ email });
     if (error) {
       setMsg('Error: ' + error.message);
     } else {
-      setMsg('OTP sent! Check your email and enter the code below.');
-      // Redirect to verify page with email and mode
-      router.push(`/verify?email=${encodeURIComponent(email)}&mode=login`);
+      setMsg('A login link has been sent! Please check your email and follow the link to continue.');
+      // Optionally: you can stay on the page or redirect.
+      // router.push(`/verify?email=${encodeURIComponent(email)}&mode=login`);
     }
     setLoading(false);
   };
@@ -31,7 +31,7 @@ export default function Login() {
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Main background */}
+      {/* Gradient background */}
       <div style={{
         position: 'absolute',
         inset: 0,
@@ -40,13 +40,13 @@ export default function Login() {
         background: 'linear-gradient(135deg, #ece9f7 0%, #fff 100%)',
         zIndex: 0
       }} />
-      {/* Opaque overlay */}
+      {/* Semi-opaque overlay */}
       <div style={{
         position: 'absolute',
         inset: 0,
         width: '100%',
         height: '100%',
-        background: 'rgba(42, 43, 53, 0.52)', // semi-transparent black
+        background: 'rgba(42, 43, 53, 0.52)',
         zIndex: 1
       }} />
       {/* Centered login box */}
@@ -141,7 +141,7 @@ export default function Login() {
                 transition: 'background 0.2s'
               }}
             >
-              {loading ? 'Sending...' : 'Send OTP'}
+              {loading ? 'Sending...' : 'Send Magic Link'}
             </button>
             {msg && (
               <div style={{
@@ -152,6 +152,14 @@ export default function Login() {
                 {msg}
               </div>
             )}
+            <div style={{ marginTop: 24, color: '#555', fontSize: '0.97em', lineHeight: 1.5 }}>
+              <p>
+                <strong>Note:</strong> To continue, go to your email and follow the login link we sent you.
+              </p>
+              <p>
+                If you don't see the email, check your spam or promotions folder.
+              </p>
+            </div>
           </form>
         </div>
       </div>
