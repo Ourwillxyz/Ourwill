@@ -216,13 +216,9 @@ export default function RegisterUser() {
           fontSize: '0.98rem',
         }}>{successMsg}</div>}
         <form onSubmit={handleSubmit}>
-          <label htmlFor="email" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Email</label>
           <input id="email" name="email" type="email" placeholder="Email" required value={formData.email} onChange={handleChange} style={{ ...dropdownStyle }} />
-          <label htmlFor="mobile" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Mobile</label>
           <input id="mobile" name="mobile" type="text" placeholder="Mobile" required value={formData.mobile} onChange={handleChange} style={{ ...dropdownStyle }} />
-          <label htmlFor="username" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Username</label>
           <input id="username" name="username" type="text" placeholder="Username" required value={formData.username} onChange={handleChange} style={{ ...dropdownStyle }} />
-          <label htmlFor="county" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>County</label>
           <select id="county" name="county" required value={formData.county} onChange={handleChange} style={{ ...dropdownStyle }}>
             <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select County</option>
             {counties.map((c) => (
@@ -231,7 +227,6 @@ export default function RegisterUser() {
               </option>
             ))}
           </select>
-          <label htmlFor="subcounty" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Subcounty</label>
           <select id="subcounty" name="subcounty" required value={formData.subcounty} onChange={handleChange} style={{ ...dropdownStyle }}>
             <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select Subcounty</option>
             {subcounties.map((sc) => (
@@ -240,7 +235,6 @@ export default function RegisterUser() {
               </option>
             ))}
           </select>
-          <label htmlFor="ward" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Ward</label>
           <select id="ward" name="ward" required value={formData.ward} onChange={handleChange} style={{ ...dropdownStyle }}>
             <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select Ward</option>
             {wards.map((w) => (
@@ -249,7 +243,6 @@ export default function RegisterUser() {
               </option>
             ))}
           </select>
-          <label htmlFor="polling_centre" style={{ display: 'block', marginBottom: '0.3rem', color: '#4a5568', fontSize: '0.97rem' }}>Polling Centre</label>
           <select id="polling_centre" name="polling_centre" required value={formData.polling_centre} onChange={handleChange} style={{ ...dropdownStyle }}>
             <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select Polling Centre</option>
             {pollingCentres.map((pc) => (
