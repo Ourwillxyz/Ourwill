@@ -140,7 +140,7 @@ export default function RegisterUser() {
     const { error } = await supabase.auth.signInWithOtp({
       email: formData.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${window.location.origin}/login`, // <-- Changed from /dashboard to /login
         data: {
           mobile: formData.mobile,
           county: formData.county,
@@ -159,7 +159,10 @@ export default function RegisterUser() {
 
     setSuccessMsg('A registration link has been sent! Please check your email and follow the link to continue.');
     setLoading(false);
-    // Do NOT redirect. User must check email and click the magic link.
+    // Redirect to login page after a short delay so they see the success message
+    setTimeout(() => {
+      router.push('/login');
+    }, 2200);
   };
 
   const dropdownStyle = {
