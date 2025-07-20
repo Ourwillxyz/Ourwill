@@ -133,12 +133,20 @@ export default function RegisterUser() {
       return;
     }
 
-    // Send Magic Link for registration via Supabase
+    // Send Magic Link for registration via Supabase, including voter metadata!
     const { error } = await supabase.auth.signInWithOtp({
       email: formData.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`
-      }
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+        data: {
+          mobile: formData.mobile,
+          username: formData.username,
+          county: formData.county,
+          subcounty: formData.subcounty,
+          ward: formData.ward,
+          polling_centre: formData.polling_centre,
+        },
+      },
     });
 
     if (error) {
