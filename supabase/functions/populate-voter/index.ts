@@ -10,8 +10,8 @@ serve(async (req) => {
   const payload = await req.json();
 
   // Get secrets from environment
-  const supabaseUrl = Deno.env.get("https://hhszxyvweibohlaiildw.supabase.co")!;
-  const supabaseServiceRoleKey = Deno.env.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3p4eXZ3ZWlib2hsYWlpbGR3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTc5NjY2OSwiZXhwIjoyMDY3MzcyNjY5fQ.yS2--IENup2TWsmZ8yeemirg5fsTTYNnSfjyo3kjdCk")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
   // Extract user info from webhook payload
