@@ -22,6 +22,7 @@ export default function RegisterUser() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Fetch counties, subcounties, wards, polling centres
   useEffect(() => {
     const fetchCounties = async () => {
       const { data, error } = await supabase.from('counties').select();
@@ -134,10 +135,10 @@ export default function RegisterUser() {
     }
 
     // Send Magic Link for registration via Supabase, including voter metadata!
+    // FIX: Move 'data' to the top level of 'options' for Supabase JS v2
     const { error } = await supabase.auth.signInWithOtp({
       email: formData.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
         data: {
           mobile: formData.mobile,
           username: formData.username,
@@ -146,6 +147,7 @@ export default function RegisterUser() {
           ward: formData.ward,
           polling_centre: formData.polling_centre,
         },
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     });
 
