@@ -6,6 +6,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [linkSent, setLinkSent] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e) => {
@@ -16,10 +17,23 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOtp({ email });
     if (error) {
       setMsg('Error: ' + error.message);
+      setLinkSent(false);
     } else {
       setMsg('A login link has been sent! Please check your email and follow the link to continue.');
-      // Optionally: you can stay on the page or redirect.
-      // router.push(`/verify?email=${encodeURIComponent(email)}&mode=login`);
+      setLinkSent(true);
+    }
+    setLoading(false);
+  };
+
+  const handleResend = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMsg('');
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) {
+      setMsg('Error: ' + error.message);
+    } else {
+      setMsg('A login link has been resent! Please check your email (and spam folder) to continue.');
     }
     setLoading(false);
   };
@@ -142,6 +156,26 @@ export default function Login() {
               }}
             >
               {loading ? 'Sending...' : 'Send Magic Link'}
+            </button>
+            <button
+              type="button"
+              disabled={loading || !linkSent || !email}
+              onClick={handleResend}
+              style={{
+                width: '100%',
+                padding: '12px 0',
+                borderRadius: 8,
+                border: 'none',
+                background: (!linkSent || loading) ? '#d1d5db' : '#f59e42',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: '1rem',
+                cursor: (!linkSent || loading) ? 'not-allowed' : 'pointer',
+                marginTop: 8,
+                transition: 'background 0.2s'
+              }}
+            >
+              Resend Magic Link
             </button>
             {msg && (
               <div style={{
