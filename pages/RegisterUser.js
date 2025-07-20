@@ -12,7 +12,6 @@ export default function RegisterUser() {
   const [formData, setFormData] = useState({
     email: '',
     mobile: '',
-    username: '',
     county: '',
     subcounty: '',
     ward: '',
@@ -144,7 +143,6 @@ export default function RegisterUser() {
         emailRedirectTo: `${window.location.origin}/dashboard`,
         data: {
           mobile: formData.mobile,
-          username: formData.username,
           county: formData.county,
           subcounty: formData.subcounty,
           ward: formData.ward,
@@ -205,20 +203,9 @@ export default function RegisterUser() {
           textAlign: 'center',
           fontSize: '0.98rem',
         }}>{errorMsg}</div>}
-        {successMsg && <div style={{
-          width: '100%',
-          marginBottom: '1rem',
-          color: '#22c55e',
-          background: '#dcfce7',
-          padding: '0.7rem',
-          borderRadius: '4px',
-          textAlign: 'center',
-          fontSize: '0.98rem',
-        }}>{successMsg}</div>}
         <form onSubmit={handleSubmit}>
           <input id="email" name="email" type="email" placeholder="Email" required value={formData.email} onChange={handleChange} style={{ ...dropdownStyle }} />
           <input id="mobile" name="mobile" type="text" placeholder="Mobile" required value={formData.mobile} onChange={handleChange} style={{ ...dropdownStyle }} />
-          <input id="username" name="username" type="text" placeholder="Username" required value={formData.username} onChange={handleChange} style={{ ...dropdownStyle }} />
           <select id="county" name="county" required value={formData.county} onChange={handleChange} style={{ ...dropdownStyle }}>
             <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select County</option>
             {counties.map((c) => (
@@ -267,6 +254,16 @@ export default function RegisterUser() {
             {loading ? 'Processing...' : 'Register'}
           </button>
         </form>
+        {successMsg && <div style={{
+          width: '100%',
+          marginTop: '1rem',
+          color: '#22c55e',
+          background: '#dcfce7',
+          padding: '0.7rem',
+          borderRadius: '4px',
+          textAlign: 'center',
+          fontSize: '0.98rem',
+        }}>{successMsg}</div>}
         <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
           <p>
             <strong>Note:</strong> To continue, go to your email and follow the registration link we sent you.
