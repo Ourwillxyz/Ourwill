@@ -1,0 +1,24 @@
+name: Deploy Supabase Edge Function
+
+on:
+  push:
+    paths:
+      - 'supabase/functions/populate-voter/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Set Supabase Secrets
+        run: |
+          supabase functions secrets set SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          supabase functions secrets set SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Deploy Edge Function
+        run: supabase functions deploy populate-voter
