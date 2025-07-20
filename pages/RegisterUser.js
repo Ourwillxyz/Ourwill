@@ -195,7 +195,6 @@ export default function RegisterUser() {
         width: '100%',
         maxWidth: '400px',
       }}>
-        <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Voter Registration</h2>
         {errorMsg && <div style={{
           width: '100%',
           marginBottom: '1rem',
