@@ -6,7 +6,7 @@ import { supabase } from '../src/supabaseClient';
 const scaleFont = (base, min, max, scale = 1) =>
   `clamp(${min}px, ${base * scale}vw, ${max}px)`;
 
-// Helper: Insert voter on first login if not present
+// ✅ UPDATED: Insert voter on first login with full metadata
 const ensureVoterRecord = async (user) => {
   if (!user) return null;
 
@@ -18,15 +18,26 @@ const ensureVoterRecord = async (user) => {
     .single();
 
   if (!existingVoter) {
-    // Insert voter record (add more fields as needed)
-    const { error: insertError, data: inserted } = await supabase.from('voter').insert([
-      {
-        auth_user_id: user.id,
-        email: user.email,
-        username: user.email.split('@')[0]
-        // Add more fields here if needed (e.g., mobile, county, etc.)
-      }
-    ]).select().single();
+    const metadata = user.user_metadata || {};
+
+    const { error: insertError, data: inserted } = await supabase
+      .from('voter')
+      .insert([
+        {
+          auth_user_id: user.id,
+          email: user.email,
+          username: metadata.username || user.email.split('@')[0],
+          mobile: metadata.mobile || '',
+          county: metadata.county || '',
+          subcounty: metadata.subcounty || '',
+          ward: metadata.ward || '',
+          polling_centre: metadata.polling_centre || '',
+          created_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single();
+
     if (insertError) {
       console.error('Error inserting voter:', insertError);
       return null;
@@ -234,7 +245,6 @@ export default function Dashboard() {
     </div>
   );
 
-  // Kenyan flag background, opaque overlay
   return (
     <div style={{
       minHeight: '100vh',
@@ -242,7 +252,6 @@ export default function Dashboard() {
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Opaque Kenyan flag background */}
       <div style={{
         position: 'fixed',
         inset: 0,
@@ -254,7 +263,6 @@ export default function Dashboard() {
         pointerEvents: 'none'
       }} />
 
-      {/* Main content */}
       <div style={{
         position: 'relative',
         zIndex: 1,
@@ -264,7 +272,6 @@ export default function Dashboard() {
         flexDirection: 'column',
         alignItems: 'center'
       }}>
-        {/* Top logo */}
         <div style={{
           width: '100%',
           display: 'flex',
@@ -286,7 +293,7 @@ export default function Dashboard() {
             display: 'block'
           }} />
         </div>
-        {/* 2x2 grid dashboard */}
+
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -297,14 +304,12 @@ export default function Dashboard() {
           margin: '0 auto',
           marginBottom: '2.5rem'
         }}>
-          {/* Row 1 */}
           <div>{voterInfo}</div>
           <div>{pollingCTA}</div>
-          {/* Row 2 */}
           <div>{closedPollsSection}</div>
           <div>{upcomingPollsSection}</div>
         </div>
-        {/* Bottom ongoing poll section */}
+
         <div style={{
           width: '100%',
           maxWidth: 700,
@@ -350,7 +355,7 @@ export default function Dashboard() {
             ))
           )}
         </div>
-        {/* Logout */}
+
         <div style={{ marginBottom: '1rem' }}>
           <button
             style={{
