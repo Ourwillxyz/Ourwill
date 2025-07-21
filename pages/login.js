@@ -9,12 +9,18 @@ export default function Login() {
   const [linkSent, setLinkSent] = useState(false);
   const router = useRouter();
 
+  // --- Updated: add redirect to dashboard on magic link ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMsg('');
     // Send Magic Link via Supabase Auth
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard` // <-- Ensures magic link sends user to dashboard
+      }
+    });
     if (error) {
       setMsg('Error: ' + error.message);
       setLinkSent(false);
@@ -29,7 +35,12 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setMsg('');
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`
+      }
+    });
     if (error) {
       setMsg('Error: ' + error.message);
     } else {
