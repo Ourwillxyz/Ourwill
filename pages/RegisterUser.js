@@ -106,9 +106,6 @@ export default function RegisterUser() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Debug: Log formData to ensure all fields are present
-    console.log("Form Data being sent to Supabase signInWithOtp:", formData);
-
     // Check for duplicate mobile
     const { data: existingUser } = await supabase
       .from('voter')
@@ -140,7 +137,7 @@ export default function RegisterUser() {
     const { error } = await supabase.auth.signInWithOtp({
       email: formData.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/login`, // <-- Changed from /dashboard to /login
+        emailRedirectTo: `${window.location.origin}/login`, // Registration magic link will redirect to /login
         data: {
           mobile: formData.mobile,
           county: formData.county,
@@ -159,10 +156,7 @@ export default function RegisterUser() {
 
     setSuccessMsg('A registration link has been sent! Please check your email and follow the link to continue.');
     setLoading(false);
-    // Redirect to login page after a short delay so they see the success message
-    setTimeout(() => {
-      router.push('/login');
-    }, 2200);
+    // NO REDIRECT to login page here; user only sees the success message and instructions.
   };
 
   const dropdownStyle = {
