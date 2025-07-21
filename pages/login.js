@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 
@@ -9,16 +9,15 @@ export default function Login() {
   const [linkSent, setLinkSent] = useState(false);
   const router = useRouter();
 
-  // --- Updated: add redirect to dashboard on magic link ---
+  // Send magic link with redirect to dashboard
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMsg('');
-    // Send Magic Link via Supabase Auth
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard` // <-- Ensures magic link sends user to dashboard
+        emailRedirectTo: `${window.location.origin}/dashboard`
       }
     });
     if (error) {
@@ -48,6 +47,49 @@ export default function Login() {
     }
     setLoading(false);
   };
+
+  // --- Add user to voter table after authentication ---
+  useEffect(() => {
+    const syncVoterTable = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Check if user exists in voter table
+        const { data: voterData, error } = await supabase
+          .from('voter')
+          .select('id')
+          .eq('email', user.email)
+          .single();
+
+        if (!voterData) {
+          // Get metadata that may have been stored during registration (if any)
+          const meta = user.user_metadata || {};
+          const { mobile, county, subcounty, ward, polling_centre } = meta;
+
+          // Insert into voter table (adjust columns as needed)
+          await supabase.from('voter').insert([{
+            email: user.email,
+            mobile,
+            county,
+            subcounty,
+            ward,
+            polling_centre,
+          }]);
+        }
+        // Optionally, redirect to /dashboard if not already there
+        if (router.pathname !== '/dashboard') {
+          router.push('/dashboard');
+        }
+      }
+    };
+
+    // Only run on client side
+    syncVoterTable();
+    // Optionally, set up a listener for auth state changes
+    // const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    //   if (session?.user) syncVoterTable();
+    // });
+    // return () => authListener?.unsubscribe();
+  }, [router]);
 
   return (
     <div style={{
