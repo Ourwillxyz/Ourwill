@@ -8,6 +8,13 @@ export default function Login() {
   const [msg, setMsg] = useState('');
   const [linkSent, setLinkSent] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
+
+  // Dropdown data
+  const [counties, setCounties] = useState([]);
+  const [subcounties, setSubcounties] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [pollingCentres, setPollingCentres] = useState([]);
+
   const [profile, setProfile] = useState({
     mobile: '',
     county: '',
@@ -15,6 +22,7 @@ export default function Login() {
     ward: '',
     polling_centre: ''
   });
+
   const router = useRouter();
 
   // Send magic link with redirect to login (not dashboard, so logic can run here)
@@ -56,6 +64,52 @@ export default function Login() {
     setLoading(false);
   };
 
+  // Handle dropdown dependencies for Complete Profile
+  useEffect(() => {
+    if (showProfileForm) {
+      supabase.from('counties').select().then(({ data }) => setCounties(data || []));
+    }
+  }, [showProfileForm]);
+
+  useEffect(() => {
+    if (showProfileForm && profile.county) {
+      supabase
+        .from('subcounties')
+        .select()
+        .eq('county_code', profile.county)
+        .then(({ data }) => setSubcounties(data || []));
+    } else {
+      setSubcounties([]);
+    }
+    if (!profile.county) setProfile((p) => ({ ...p, subcounty: '', ward: '', polling_centre: '' }));
+  }, [showProfileForm, profile.county]);
+
+  useEffect(() => {
+    if (showProfileForm && profile.subcounty) {
+      supabase
+        .from('wards')
+        .select()
+        .eq('subcounty_code', profile.subcounty)
+        .then(({ data }) => setWards(data || []));
+    } else {
+      setWards([]);
+    }
+    if (!profile.subcounty) setProfile((p) => ({ ...p, ward: '', polling_centre: '' }));
+  }, [showProfileForm, profile.subcounty]);
+
+  useEffect(() => {
+    if (showProfileForm && profile.ward) {
+      supabase
+        .from('polling_centres')
+        .select()
+        .eq('ward_code', profile.ward)
+        .then(({ data }) => setPollingCentres(data || []));
+    } else {
+      setPollingCentres([]);
+    }
+    if (!profile.ward) setProfile((p) => ({ ...p, polling_centre: '' }));
+  }, [showProfileForm, profile.ward]);
+
   // After authentication, check if user is in voter table and has all required info
   useEffect(() => {
     const syncVoterTable = async () => {
@@ -70,13 +124,11 @@ export default function Login() {
         .single();
 
       const meta = user.user_metadata || {};
-      // If not in voter table, check if all fields are present
       const allFieldsPresent =
         meta.mobile && meta.county && meta.subcounty && meta.ward && meta.polling_centre;
 
       if (!voter) {
         if (allFieldsPresent) {
-          // Insert into voter table
           await supabase.from('voter').insert([{
             email: user.email,
             mobile: meta.mobile,
@@ -87,7 +139,6 @@ export default function Login() {
           }]);
           router.push('/dashboard');
         } else {
-          // Prompt for missing info
           setProfile({
             mobile: meta.mobile || '',
             county: meta.county || '',
@@ -98,7 +149,6 @@ export default function Login() {
           setShowProfileForm(true);
         }
       } else {
-        // Voter already exists, go to dashboard
         router.push('/dashboard');
       }
     };
@@ -110,7 +160,10 @@ export default function Login() {
     const { name, value } = e.target;
     setProfile((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      ...(name === "county" ? { subcounty: '', ward: '', polling_centre: '' } : {}),
+      ...(name === "subcounty" ? { ward: '', polling_centre: '' } : {}),
+      ...(name === "ward" ? { polling_centre: '' } : {})
     }));
   };
 
@@ -118,9 +171,7 @@ export default function Login() {
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     const { data: { user } } = await supabase.auth.getUser();
-    // Update auth metadata
     await supabase.auth.updateUser({ data: profile });
-    // Upsert voter table
     await supabase.from('voter').upsert([{
       email: user.email,
       ...profile
@@ -128,8 +179,18 @@ export default function Login() {
     router.push('/dashboard');
   };
 
+  const dropdownStyle = {
+    width: '100%',
+    padding: '0.6rem 0.8rem',
+    background: '#ffffff',
+    color: '#000000',
+    border: '1px solid #cbd5e1',
+    borderRadius: '6px',
+    marginBottom: '0.8rem',
+    fontSize: '1rem'
+  };
+
   if (showProfileForm) {
-    // You can style this form as needed, or refactor to use dropdowns!
     return (
       <div style={{
         minHeight: '100vh',
@@ -157,40 +218,32 @@ export default function Login() {
             onChange={handleProfileChange}
             placeholder="Mobile"
             required
-            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
+            style={dropdownStyle}
           />
-          <input
-            name="county"
-            value={profile.county}
-            onChange={handleProfileChange}
-            placeholder="County"
-            required
-            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
-          />
-          <input
-            name="subcounty"
-            value={profile.subcounty}
-            onChange={handleProfileChange}
-            placeholder="Subcounty"
-            required
-            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
-          />
-          <input
-            name="ward"
-            value={profile.ward}
-            onChange={handleProfileChange}
-            placeholder="Ward"
-            required
-            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
-          />
-          <input
-            name="polling_centre"
-            value={profile.polling_centre}
-            onChange={handleProfileChange}
-            placeholder="Polling Centre"
-            required
-            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
-          />
+          <select name="county" value={profile.county} onChange={handleProfileChange} required style={dropdownStyle}>
+            <option value="">Select County</option>
+            {counties.map((c) => (
+              <option key={c.county_code} value={c.county_code}>{c.county_name}</option>
+            ))}
+          </select>
+          <select name="subcounty" value={profile.subcounty} onChange={handleProfileChange} required style={dropdownStyle} disabled={!profile.county}>
+            <option value="">Select Subcounty</option>
+            {subcounties.map((sc) => (
+              <option key={sc.subcounty_code} value={sc.subcounty_code}>{sc.subcounty_name}</option>
+            ))}
+          </select>
+          <select name="ward" value={profile.ward} onChange={handleProfileChange} required style={dropdownStyle} disabled={!profile.subcounty}>
+            <option value="">Select Ward</option>
+            {wards.map((w) => (
+              <option key={w.ward_code} value={w.ward_code}>{w.ward_name}</option>
+            ))}
+          </select>
+          <select name="polling_centre" value={profile.polling_centre} onChange={handleProfileChange} required style={dropdownStyle} disabled={!profile.ward}>
+            <option value="">Select Polling Centre</option>
+            {pollingCentres.map((pc) => (
+              <option key={pc.polling_centre_code} value={pc.polling_centre_code}>{pc.polling_centre_name}</option>
+            ))}
+          </select>
           <button
             type="submit"
             style={{
