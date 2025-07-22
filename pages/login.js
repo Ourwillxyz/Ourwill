@@ -211,7 +211,7 @@ export default function Login() {
             maxWidth: 400,
           }}
         >
-          <h2 style={{ color: '#4733a8', marginBottom: 16 }}>Complete Your Profile</h2>
+          <h2 style={{ color: '#4733a8', marginBottom: 16 }}>Confirm Your Profile</h2>
           <input
             name="mobile"
             value={profile.mobile}
