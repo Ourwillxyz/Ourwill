@@ -8,7 +8,6 @@ export default function RegisterUser() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Styling preserved from your original
   const dropdownStyle = {
     width: '100%',
     padding: '0.6rem 0.8rem',
@@ -32,26 +31,16 @@ export default function RegisterUser() {
       return;
     }
 
-    if (mode === 'register') {
-      // Registration: send magic link
-      const { error } = await supabase.auth.signUp({ email });
-      if (error) {
-        setErrorMsg(error.message);
-        setLoading(false);
-        return;
-      }
-      setSuccessMsg("A registration link has been sent! Please check your email and follow the link to continue.");
-    } else {
-      // Login: send magic link
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) {
-        setErrorMsg(error.message);
-        setLoading(false);
-        return;
-      }
-      setSuccessMsg("A login link has been sent! Please check your email to continue.");
+    // Use magic link (passwordless) for both register & login
+    const { error } = await supabase.auth.signInWithOtp({ email });
+
+    if (error) {
+      setErrorMsg(error.message);
+      setLoading(false);
+      return;
     }
 
+    setSuccessMsg(`A ${mode} link has been sent! Please check your email and follow the link to continue.`);
     setLoading(false);
   }
 
@@ -69,16 +58,14 @@ export default function RegisterUser() {
     }}>
       <img src="/ourwill-logo.png" alt="OurWill Logo" style={{ width: '180px', marginBottom: '1.5rem' }} />
       <div style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.93)',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
         padding: '2rem',
         borderRadius: '10px',
         width: '100%',
         maxWidth: '400px',
       }}>
-        {/* Tab Selector */}
-        <div style={{
-          display: "flex", gap: 8, marginBottom: 22, justifyContent: "center"
-        }}>
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 22, justifyContent: "center" }}>
           <button
             style={{
               flex: 1,
@@ -110,7 +97,6 @@ export default function RegisterUser() {
             Login
           </button>
         </div>
-
         {errorMsg && <div style={{
           width: '100%',
           marginBottom: '1rem',
@@ -121,7 +107,6 @@ export default function RegisterUser() {
           textAlign: 'center',
           fontSize: '0.98rem',
         }}>{errorMsg}</div>}
-
         <form onSubmit={handleSubmit}>
           <input
             id="email"
@@ -133,30 +118,25 @@ export default function RegisterUser() {
             onChange={e => setEmail(e.target.value)}
             style={{ ...dropdownStyle, marginBottom: 18 }}
           />
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.8rem 0',
-              background: '#3b82f6',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '1.05rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-              marginTop: '0.2rem',
-              marginBottom: 8,
-            }}
-          >
+          <button type="submit" disabled={loading} style={{
+            width: '100%',
+            padding: '0.8rem 0',
+            background: '#3b82f6',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '1.05rem',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+            marginTop: '0.2rem',
+            marginBottom: 8,
+          }}>
             {loading
               ? (mode === 'register' ? 'Sending registration link...' : 'Sending login link...')
               : (mode === 'register' ? 'Register' : 'Login')}
           </button>
         </form>
-
         {successMsg && <div style={{
           width: '100%',
           marginTop: '1rem',
@@ -167,7 +147,6 @@ export default function RegisterUser() {
           textAlign: 'center',
           fontSize: '0.98rem',
         }}>{successMsg}</div>}
-
         <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
           <p>
             <strong>Note:</strong> To continue, go to your email and follow the link we sent you.
