@@ -1,164 +1,14 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useState } from 'react';
 import { supabase } from '../src/supabaseClient';
 
 export default function RegisterUser() {
-  const router = useRouter();
-
-  const [counties, setCounties] = useState([]);
-  const [subcounties, setSubcounties] = useState([]);
-  const [wards, setWards] = useState([]);
-  const [pollingCentres, setPollingCentres] = useState([]);
-  const [formData, setFormData] = useState({
-    email: '',
-    mobile: '',
-    county: '',
-    subcounty: '',
-    ward: '',
-    polling_centre: '',
-  });
+  const [mode, setMode] = useState('register'); // 'register' or 'login'
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  useEffect(() => {
-    const fetchCounties = async () => {
-      const { data, error } = await supabase.from('counties').select();
-      if (error) {
-        setErrorMsg('Failed to fetch counties');
-        return;
-      }
-      setCounties(data || []);
-    };
-    fetchCounties();
-  }, []);
-
-  useEffect(() => {
-    const fetchSubcounties = async () => {
-      if (!formData.county) {
-        setSubcounties([]);
-        return;
-      }
-      const { data, error } = await supabase
-        .from('subcounties')
-        .select()
-        .eq('county_code', formData.county);
-      if (error) {
-        setErrorMsg('Failed to fetch subcounties');
-        return;
-      }
-      setSubcounties(data || []);
-    };
-    fetchSubcounties();
-  }, [formData.county]);
-
-  useEffect(() => {
-    const fetchWards = async () => {
-      if (!formData.subcounty) {
-        setWards([]);
-        return;
-      }
-      const { data, error } = await supabase
-        .from('wards')
-        .select()
-        .eq('subcounty_code', formData.subcounty);
-      if (error) {
-        setErrorMsg('Failed to fetch wards');
-        return;
-      }
-      setWards(data || []);
-    };
-    fetchWards();
-  }, [formData.subcounty]);
-
-  useEffect(() => {
-    const fetchPollingCentres = async () => {
-      if (!formData.ward) {
-        setPollingCentres([]);
-        return;
-      }
-      const { data, error } = await supabase
-        .from('polling_centres')
-        .select()
-        .eq('ward_code', formData.ward);
-      if (error) {
-        setErrorMsg('Failed to fetch polling centres');
-        return;
-      }
-      setPollingCentres(data || []);
-    };
-    fetchPollingCentres();
-  }, [formData.ward]);
-
-  const handleChange = (e) => {
-    setErrorMsg('');
-    setSuccessMsg('');
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-
-    // Check for duplicate mobile
-    const { data: existingUser } = await supabase
-      .from('voter')
-      .select('id')
-      .eq('mobile', formData.mobile)
-      .single();
-
-    if (existingUser) {
-      setErrorMsg('This mobile number is already registered. Please use a different number or try logging in.');
-      setLoading(false);
-      return;
-    }
-
-    // Check for duplicate email
-    const { data: existingEmailUser } = await supabase
-      .from('voter')
-      .select('id')
-      .eq('email', formData.email)
-      .single();
-
-    if (existingEmailUser) {
-      setErrorMsg('This email is already registered. Please use a different email or try logging in.');
-      setLoading(false);
-      return;
-    }
-
-    // Send Magic Link for registration via Supabase, including voter metadata!
-    // Pass all required fields in the "data" object under "options"
-    const { error } = await supabase.auth.signInWithOtp({
-      email: formData.email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login`, // Registration magic link will redirect to /login
-        data: {
-          mobile: formData.mobile,
-          county: formData.county,
-          subcounty: formData.subcounty,
-          ward: formData.ward,
-          polling_centre: formData.polling_centre,
-        }
-      }
-    });
-
-    if (error) {
-      setErrorMsg('Failed to send registration link: ' + error.message);
-      setLoading(false);
-      return;
-    }
-
-    setSuccessMsg('A registration link has been sent! Please check your email and follow the link to continue.');
-    setLoading(false);
-    // NO REDIRECT to login page here; user only sees the success message and instructions.
-  };
-
+  // Styling preserved from your original
   const dropdownStyle = {
     width: '100%',
     padding: '0.6rem 0.8rem',
@@ -169,6 +19,41 @@ export default function RegisterUser() {
     marginBottom: '0.8rem',
     fontSize: '1rem'
   };
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+    setLoading(true);
+
+    if (!email) {
+      setErrorMsg('Please enter your email.');
+      setLoading(false);
+      return;
+    }
+
+    if (mode === 'register') {
+      // Registration: send magic link
+      const { error } = await supabase.auth.signUp({ email });
+      if (error) {
+        setErrorMsg(error.message);
+        setLoading(false);
+        return;
+      }
+      setSuccessMsg("A registration link has been sent! Please check your email and follow the link to continue.");
+    } else {
+      // Login: send magic link
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) {
+        setErrorMsg(error.message);
+        setLoading(false);
+        return;
+      }
+      setSuccessMsg("A login link has been sent! Please check your email to continue.");
+    }
+
+    setLoading(false);
+  }
 
   return (
     <div style={{
@@ -184,12 +69,48 @@ export default function RegisterUser() {
     }}>
       <img src="/ourwill-logo.png" alt="OurWill Logo" style={{ width: '180px', marginBottom: '1.5rem' }} />
       <div style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        backgroundColor: 'rgba(255, 255, 255, 0.93)',
         padding: '2rem',
         borderRadius: '10px',
         width: '100%',
         maxWidth: '400px',
       }}>
+        {/* Tab Selector */}
+        <div style={{
+          display: "flex", gap: 8, marginBottom: 22, justifyContent: "center"
+        }}>
+          <button
+            style={{
+              flex: 1,
+              padding: "10px 0",
+              background: mode === "register" ? "#3b82f6" : "#ece9f7",
+              color: mode === "register" ? "#fff" : "#3b82f6",
+              border: "none",
+              borderRadius: 8,
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+            onClick={() => { setMode("register"); setErrorMsg(""); setSuccessMsg(""); }}
+          >
+            Register
+          </button>
+          <button
+            style={{
+              flex: 1,
+              padding: "10px 0",
+              background: mode === "login" ? "#3b82f6" : "#ece9f7",
+              color: mode === "login" ? "#fff" : "#3b82f6",
+              border: "none",
+              borderRadius: 8,
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+            onClick={() => { setMode("login"); setErrorMsg(""); setSuccessMsg(""); }}
+          >
+            Login
+          </button>
+        </div>
+
         {errorMsg && <div style={{
           width: '100%',
           marginBottom: '1rem',
@@ -200,57 +121,42 @@ export default function RegisterUser() {
           textAlign: 'center',
           fontSize: '0.98rem',
         }}>{errorMsg}</div>}
+
         <form onSubmit={handleSubmit}>
-          <input id="email" name="email" type="email" placeholder="Email" required value={formData.email} onChange={handleChange} style={{ ...dropdownStyle }} />
-          <input id="mobile" name="mobile" type="text" placeholder="Mobile" required value={formData.mobile} onChange={handleChange} style={{ ...dropdownStyle }} />
-          <select id="county" name="county" required value={formData.county} onChange={handleChange} style={{ ...dropdownStyle }}>
-            <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select County</option>
-            {counties.map((c) => (
-              <option key={c.county_code} value={c.county_code} style={{ background: '#ffffff', color: '#000000' }}>
-                {c.county_name}
-              </option>
-            ))}
-          </select>
-          <select id="subcounty" name="subcounty" required value={formData.subcounty} onChange={handleChange} style={{ ...dropdownStyle }}>
-            <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select Subcounty</option>
-            {subcounties.map((sc) => (
-              <option key={sc.subcounty_code} value={sc.subcounty_code} style={{ background: '#ffffff', color: '#000000' }}>
-                {sc.subcounty_name}
-              </option>
-            ))}
-          </select>
-          <select id="ward" name="ward" required value={formData.ward} onChange={handleChange} style={{ ...dropdownStyle }}>
-            <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select Ward</option>
-            {wards.map((w) => (
-              <option key={w.ward_code} value={w.ward_code} style={{ background: '#ffffff', color: '#000000' }}>
-                {w.ward_name}
-              </option>
-            ))}
-          </select>
-          <select id="polling_centre" name="polling_centre" required value={formData.polling_centre} onChange={handleChange} style={{ ...dropdownStyle }}>
-            <option value="" style={{ background: '#ffffff', color: '#000000' }}>Select Polling Centre</option>
-            {pollingCentres.map((pc) => (
-              <option key={pc.polling_centre_code} value={pc.polling_centre_code} style={{ background: '#ffffff', color: '#000000' }}>
-                {pc.polling_centre_name}
-              </option>
-            ))}
-          </select>
-          <button type="submit" disabled={loading} style={{
-            width: '100%',
-            padding: '0.8rem 0',
-            background: '#3b82f6',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '1.05rem',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-            marginTop: '1rem',
-          }}>
-            {loading ? 'Processing...' : 'Register'}
+          <input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="Email"
+            required
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            style={{ ...dropdownStyle, marginBottom: 18 }}
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '0.8rem 0',
+              background: '#3b82f6',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '1.05rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              marginTop: '0.2rem',
+              marginBottom: 8,
+            }}
+          >
+            {loading
+              ? (mode === 'register' ? 'Sending registration link...' : 'Sending login link...')
+              : (mode === 'register' ? 'Register' : 'Login')}
           </button>
         </form>
+
         {successMsg && <div style={{
           width: '100%',
           marginTop: '1rem',
@@ -261,9 +167,10 @@ export default function RegisterUser() {
           textAlign: 'center',
           fontSize: '0.98rem',
         }}>{successMsg}</div>}
+
         <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
           <p>
-            <strong>Note:</strong> To continue, go to your email and follow the registration link we sent you.
+            <strong>Note:</strong> To continue, go to your email and follow the link we sent you.
           </p>
           <p>
             If you don't see the email, check your spam or promotions folder.
