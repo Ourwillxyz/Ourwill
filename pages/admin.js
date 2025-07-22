@@ -40,7 +40,6 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Fetch user and check admin role
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -48,7 +47,15 @@ export default function AdminPage() {
         return;
       }
       setUser(user);
-      // You should set "role" in user_metadata when creating admins
+
+      // Hard-coded super admin email
+      const superAdminEmail = 'admin@ourwill.xyz';
+      if (user.email === superAdminEmail) {
+        setRole('admin');
+        return;
+      }
+
+      // Fallback to user_metadata for other admins
       const userRole = user.user_metadata?.role || '';
       setRole(userRole);
       if (userRole !== 'admin') {
