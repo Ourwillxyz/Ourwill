@@ -21,6 +21,7 @@ export default function CompleteProfile() {
   const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
+    // Check user
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -97,9 +98,9 @@ export default function CompleteProfile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
-    setLoading(true);
 
     // Check for duplicate mobile
     const { data: existingUser } = await supabase
@@ -114,21 +115,7 @@ export default function CompleteProfile() {
       return;
     }
 
-    // Check for existing voter profile
-    const { data: existingProfile } = await supabase
-      .from('voter')
-      .select('id')
-      .eq('id', user.id)
-      .single();
-
-    if (existingProfile) {
-      setErrorMsg('Profile already exists! Redirecting...');
-      setLoading(false);
-      setTimeout(() => router.replace('/dashboard'), 1500);
-      return;
-    }
-
-    // Insert voter profile
+    // Insert voter profile using Auth user.id as PK
     const { error } = await supabase
       .from('voter')
       .insert([{
