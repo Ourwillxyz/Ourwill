@@ -48,15 +48,33 @@ const ensureVoterRecord = async (user) => {
   }
 };
 
+// Helper to fetch a name given table, code column, name column, and value
+const fetchNameByCode = async (table, codeColumn, nameColumn, code) => {
+  if (!code) return '';
+  const { data, error } = await supabase
+    .from(table)
+    .select(nameColumn)
+    .eq(codeColumn, code)
+    .single();
+  return data ? data[nameColumn] : '';
+};
+
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [voter, setVoter] = useState(null);
+  const [locationNames, setLocationNames] = useState({
+    county: '',
+    subcounty: '',
+    ward: '',
+    polling_centre: '',
+  });
   const [ongoingPolls, setOngoingPolls] = useState([]);
   const [upcomingPolls, setUpcomingPolls] = useState([]);
   const [closedPolls, setClosedPolls] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch voter + location names
   useEffect(() => {
     const fetchAll = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -69,6 +87,22 @@ export default function Dashboard() {
       // Ensure voter record exists after magic link login
       const voterRecord = await ensureVoterRecord(user);
       setVoter(voterRecord);
+
+      // Fetch location names for codes
+      if (voterRecord) {
+        const [county, subcounty, ward, polling_centre] = await Promise.all([
+          fetchNameByCode('counties', 'county_code', 'county_name', voterRecord.county),
+          fetchNameByCode('subcounties', 'subcounty_code', 'subcounty_name', voterRecord.subcounty),
+          fetchNameByCode('wards', 'ward_code', 'ward_name', voterRecord.ward),
+          fetchNameByCode('polling_centres', 'polling_centre_code', 'polling_centre_name', voterRecord.polling_centre),
+        ]);
+        setLocationNames({
+          county,
+          subcounty,
+          ward,
+          polling_centre,
+        });
+      }
 
       // Fetch ongoing polls
       const { data: ongoingData } = await supabase
@@ -138,10 +172,10 @@ export default function Dashboard() {
         <p><strong>Email:</strong> {user.email}</p>
         <p><strong>Mobile:</strong> {voter?.mobile || <em>Not set</em>}</p>
         <p><strong>Username:</strong> {voter?.username || username}</p>
-        <p><strong>County:</strong> {voter?.county || <em>Not set</em>}</p>
-        <p><strong>Subcounty:</strong> {voter?.subcounty || <em>Not set</em>}</p>
-        <p><strong>Ward:</strong> {voter?.ward || <em>Not set</em>}</p>
-        <p><strong>Polling Centre:</strong> {voter?.polling_centre || <em>Not set</em>}</p>
+        <p><strong>County:</strong> {locationNames.county || <em>Not set</em>}</p>
+        <p><strong>Subcounty:</strong> {locationNames.subcounty || <em>Not set</em>}</p>
+        <p><strong>Ward:</strong> {locationNames.ward || <em>Not set</em>}</p>
+        <p><strong>Polling Centre:</strong> {locationNames.polling_centre || <em>Not set</em>}</p>
       </div>
       <button
         style={{
