@@ -7,9 +7,17 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [linkSent, setLinkSent] = useState(false);
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [profile, setProfile] = useState({
+    mobile: '',
+    county: '',
+    subcounty: '',
+    ward: '',
+    polling_centre: ''
+  });
   const router = useRouter();
 
-  // Send magic link with redirect to dashboard
+  // Send magic link with redirect to login (not dashboard, so logic can run here)
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -17,7 +25,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`
+        emailRedirectTo: `${window.location.origin}/login`
       }
     });
     if (error) {
@@ -37,7 +45,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`
+        emailRedirectTo: `${window.location.origin}/login`
       }
     });
     if (error) {
@@ -48,48 +56,162 @@ export default function Login() {
     setLoading(false);
   };
 
-  // --- Add user to voter table after authentication ---
+  // After authentication, check if user is in voter table and has all required info
   useEffect(() => {
     const syncVoterTable = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Check if user exists in voter table
-        const { data: voterData, error } = await supabase
-          .from('voter')
-          .select('id')
-          .eq('email', user.email)
-          .single();
+      if (!user) return;
 
-        if (!voterData) {
-          // Get metadata that may have been stored during registration (if any)
-          const meta = user.user_metadata || {};
-          const { mobile, county, subcounty, ward, polling_centre } = meta;
+      // Check if already in voter table
+      const { data: voter } = await supabase
+        .from('voter')
+        .select('*')
+        .eq('email', user.email)
+        .single();
 
-          // Insert into voter table (adjust columns as needed)
+      const meta = user.user_metadata || {};
+      // If not in voter table, check if all fields are present
+      const allFieldsPresent =
+        meta.mobile && meta.county && meta.subcounty && meta.ward && meta.polling_centre;
+
+      if (!voter) {
+        if (allFieldsPresent) {
+          // Insert into voter table
           await supabase.from('voter').insert([{
             email: user.email,
-            mobile,
-            county,
-            subcounty,
-            ward,
-            polling_centre,
+            mobile: meta.mobile,
+            county: meta.county,
+            subcounty: meta.subcounty,
+            ward: meta.ward,
+            polling_centre: meta.polling_centre
           }]);
-        }
-        // Optionally, redirect to /dashboard if not already there
-        if (router.pathname !== '/dashboard') {
           router.push('/dashboard');
+        } else {
+          // Prompt for missing info
+          setProfile({
+            mobile: meta.mobile || '',
+            county: meta.county || '',
+            subcounty: meta.subcounty || '',
+            ward: meta.ward || '',
+            polling_centre: meta.polling_centre || ''
+          });
+          setShowProfileForm(true);
         }
+      } else {
+        // Voter already exists, go to dashboard
+        router.push('/dashboard');
       }
     };
-
-    // Only run on client side
     syncVoterTable();
-    // Optionally, set up a listener for auth state changes
-    // const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-    //   if (session?.user) syncVoterTable();
-    // });
-    // return () => authListener?.unsubscribe();
   }, [router]);
+
+  // Handle profile form changes
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfile((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle profile form submit
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    const { data: { user } } = await supabase.auth.getUser();
+    // Update auth metadata
+    await supabase.auth.updateUser({ data: profile });
+    // Upsert voter table
+    await supabase.from('voter').upsert([{
+      email: user.email,
+      ...profile
+    }], { onConflict: ['email'] });
+    router.push('/dashboard');
+  };
+
+  if (showProfileForm) {
+    // You can style this form as needed, or refactor to use dropdowns!
+    return (
+      <div style={{
+        minHeight: '100vh',
+        width: '100vw',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #ece9f7 0%, #fff 100%)'
+      }}>
+        <form
+          onSubmit={handleProfileSubmit}
+          style={{
+            background: '#fff',
+            padding: '2rem',
+            borderRadius: 16,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.17)',
+            width: '100%',
+            maxWidth: 400,
+          }}
+        >
+          <h2 style={{ color: '#4733a8', marginBottom: 16 }}>Complete Your Profile</h2>
+          <input
+            name="mobile"
+            value={profile.mobile}
+            onChange={handleProfileChange}
+            placeholder="Mobile"
+            required
+            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
+          />
+          <input
+            name="county"
+            value={profile.county}
+            onChange={handleProfileChange}
+            placeholder="County"
+            required
+            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
+          />
+          <input
+            name="subcounty"
+            value={profile.subcounty}
+            onChange={handleProfileChange}
+            placeholder="Subcounty"
+            required
+            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
+          />
+          <input
+            name="ward"
+            value={profile.ward}
+            onChange={handleProfileChange}
+            placeholder="Ward"
+            required
+            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
+          />
+          <input
+            name="polling_centre"
+            value={profile.polling_centre}
+            onChange={handleProfileChange}
+            placeholder="Polling Centre"
+            required
+            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
+          />
+          <button
+            type="submit"
+            style={{
+              width: '100%',
+              padding: '12px 0',
+              borderRadius: 8,
+              border: 'none',
+              background: '#4f46e5',
+              color: '#fff',
+              fontWeight: 600,
+              fontSize: '1rem',
+              marginTop: 8,
+              cursor: 'pointer'
+            }}
+          >
+            Save Profile
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div style={{
