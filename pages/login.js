@@ -40,7 +40,9 @@ export default function Login() {
       setMsg('Error: ' + error.message);
       setLinkSent(false);
     } else {
-      setMsg('A login link has been sent! Please check your email and follow the link to continue.');
+      setMsg(
+        `A login link has been sent! Please check your email and follow the link to continue.<br /><strong>Please open the magic link in the same device and browser where you requested it.</strong>`
+      );
       setLinkSent(true);
     }
     setLoading(false);
@@ -59,7 +61,9 @@ export default function Login() {
     if (error) {
       setMsg('Error: ' + error.message);
     } else {
-      setMsg('A login link has been resent! Please check your email (and spam folder) to continue.');
+      setMsg(
+        `A login link has been resent! Please check your email (and spam folder) to continue.<br /><strong>Please open the magic link in the same device and browser where you requested it.</strong>`
+      );
     }
     setLoading(false);
   };
@@ -406,17 +410,21 @@ export default function Login() {
               Resend Magic Link
             </button>
             {msg && (
-              <div style={{
-                marginTop: 16,
-                color: msg.startsWith('Error') ? '#dc2626' : '#4f46e5',
-                fontWeight: 500
-              }}>
-                {msg}
-              </div>
+              <div
+                style={{
+                  marginTop: 16,
+                  color: msg.startsWith('Error') ? '#dc2626' : '#4f46e5',
+                  fontWeight: 500
+                }}
+                dangerouslySetInnerHTML={{ __html: msg }}
+              />
             )}
             <div style={{ marginTop: 24, color: '#555', fontSize: '0.97em', lineHeight: 1.5 }}>
               <p>
                 <strong>Note:</strong> To continue, go to your email and follow the login link we sent you.
+              </p>
+              <p>
+                <strong>Important:</strong> Please open the magic link in the same device and browser where you requested it.
               </p>
               <p>
                 If you don't see the email, check your spam or promotions folder.
