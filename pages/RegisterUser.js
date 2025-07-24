@@ -1,13 +1,23 @@
 import { useState } from 'react';
-import { supabase } from '../src/supabaseClient';
+import axios from 'axios'; // Make sure to install axios with `npm install axios`
 
 export default function RegisterUser() {
   const [mode, setMode] = useState('register'); // 'register' or 'login'
-  const [email, setEmail] = useState('');
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    county: '',
+    subcounty: '',
+    ward: '',
+    polling_centre: '',
+    password: ''
+  });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Dropdown styling
   const dropdownStyle = {
     width: '100%',
     padding: '0.6rem 0.8rem',
@@ -19,28 +29,51 @@ export default function RegisterUser() {
     fontSize: '1rem'
   };
 
+  function handleChange(e) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
     setLoading(true);
 
-    if (!email) {
-      setErrorMsg('Please enter your email.');
+    // Basic validation
+    for (const key in form) {
+      if (!form[key]) {
+        setErrorMsg('Please fill all fields.');
+        setLoading(false);
+        return;
+      }
+    }
+    if (!form.email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
+      setErrorMsg('Enter a valid email.');
+      setLoading(false);
+      return;
+    }
+    if (form.password.length < 6) {
+      setErrorMsg('Password should be at least 6 characters.');
       setLoading(false);
       return;
     }
 
-    // Use magic link (passwordless) for both register & login
-    const { error } = await supabase.auth.signInWithOtp({ email });
-
-    if (error) {
-      setErrorMsg(error.message);
-      setLoading(false);
-      return;
+    try {
+      if (mode === 'register') {
+        const res = await axios.post('/register', form); // Use full URL if needed
+        setSuccessMsg(res.data.message || 'Registration successful! Please verify your email/mobile.');
+      } else {
+        // For login, you can send email+password to /login (implement backend accordingly)
+        const { email, password } = form;
+        const res = await axios.post('/login', { email, password });
+        setSuccessMsg(res.data.message || 'Login successful!');
+      }
+    } catch (err) {
+      setErrorMsg(
+        err.response?.data?.message ||
+        (mode === 'register' ? 'Registration failed.' : 'Login failed.')
+      );
     }
-
-    setSuccessMsg(`A ${mode} link has been sent! Please check your email and follow the link to continue.`);
     setLoading(false);
   }
 
@@ -109,14 +142,70 @@ export default function RegisterUser() {
         }}>{errorMsg}</div>}
         <form onSubmit={handleSubmit}>
           <input
-            id="email"
+            name="name"
+            placeholder="Name"
+            value={form.name}
+            onChange={handleChange}
+            required
+            style={dropdownStyle}
+          />
+          <input
             name="email"
             type="email"
             placeholder="Email"
+            value={form.email}
+            onChange={handleChange}
             required
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={{ ...dropdownStyle, marginBottom: 18 }}
+            style={dropdownStyle}
+          />
+          <input
+            name="mobile"
+            placeholder="Mobile"
+            value={form.mobile}
+            onChange={handleChange}
+            required
+            style={dropdownStyle}
+          />
+          <input
+            name="county"
+            placeholder="County"
+            value={form.county}
+            onChange={handleChange}
+            required
+            style={dropdownStyle}
+          />
+          <input
+            name="subcounty"
+            placeholder="Subcounty"
+            value={form.subcounty}
+            onChange={handleChange}
+            required
+            style={dropdownStyle}
+          />
+          <input
+            name="ward"
+            placeholder="Ward"
+            value={form.ward}
+            onChange={handleChange}
+            required
+            style={dropdownStyle}
+          />
+          <input
+            name="polling_centre"
+            placeholder="Polling Centre"
+            value={form.polling_centre}
+            onChange={handleChange}
+            required
+            style={dropdownStyle}
+          />
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={handleChange}
+            required
+            style={dropdownStyle}
           />
           <button type="submit" disabled={loading} style={{
             width: '100%',
@@ -133,7 +222,7 @@ export default function RegisterUser() {
             marginBottom: 8,
           }}>
             {loading
-              ? (mode === 'register' ? 'Sending registration link...' : 'Sending login link...')
+              ? (mode === 'register' ? 'Registering...' : 'Logging in...')
               : (mode === 'register' ? 'Register' : 'Login')}
           </button>
         </form>
@@ -147,14 +236,13 @@ export default function RegisterUser() {
           textAlign: 'center',
           fontSize: '0.98rem',
         }}>{successMsg}</div>}
-        <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
-          <p>
-            <strong>Note:</strong> To continue, go to your email and follow the link we sent you.
-          </p>
-          <p>
-            If you don't see the email, check your spam or promotions folder.
-          </p>
-        </div>
+        {mode === 'register' && (
+          <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
+            <p>
+              <strong>Note:</strong> After registering, please check your email or mobile for a verification message.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
