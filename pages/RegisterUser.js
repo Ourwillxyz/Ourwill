@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { createClient } from '@supabase/supabase-js';
-
-// Replace with your actual Supabase credentials!
-const supabase = createClient(
-  'https://your-supabase-url.supabase.co',
-  'your-anon-key'
-);
+import supabase from './supabaseClient'; // Import the configured Supabase client
 
 export default function RegisterUser() {
   const [mode, setMode] = useState('register');
