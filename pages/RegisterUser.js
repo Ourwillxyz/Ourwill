@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import supabase from '../src/supabaseClient'; // Import the configured Supabase client
+import supabase from '../src/supabaseClient'; // Correct import path
 
 export default function RegisterUser() {
   const [mode, setMode] = useState('register');
