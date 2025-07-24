@@ -5,7 +5,6 @@ import supabase from '../src/supabaseClient';
 export default function RegisterUser() {
   const [mode, setMode] = useState('register');
   const [form, setForm] = useState({
-    name: '',
     email: '',
     mobile: '',
     county_code: '',
@@ -35,7 +34,7 @@ export default function RegisterUser() {
     fontSize: '1rem'
   };
 
-  // Fetch counties on mount — copied logic from TestCounties.js
+  // Fetch counties on mount
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
@@ -131,6 +130,12 @@ export default function RegisterUser() {
     }
   }
 
+  // Helper to extract username from email
+  function getUsernameFromEmail(email) {
+    if (!email) return '';
+    return email.split('@')[0];
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setErrorMsg('');
@@ -156,11 +161,14 @@ export default function RegisterUser() {
       return;
     }
 
+    // Extract username from email
+    const username = getUsernameFromEmail(form.email);
+
     try {
       if (mode === 'register') {
-        // Send the form with codes for dropdowns
+        // Send the form with username extracted from email
         const res = await axios.post('https://your-backend.onrender.com/api/register', {
-          name: form.name,
+          username,
           email: form.email,
           mobile: form.mobile,
           county: form.county_code,
@@ -248,14 +256,6 @@ export default function RegisterUser() {
           fontSize: '0.98rem',
         }}>{errorMsg}</div>}
         <form onSubmit={handleSubmit}>
-          <input
-            name="name"
-            placeholder="Name"
-            value={form.name}
-            onChange={handleChange}
-            required
-            style={dropdownStyle}
-          />
           <input
             name="email"
             type="email"
