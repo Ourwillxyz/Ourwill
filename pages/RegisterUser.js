@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import supabase from '../src/supabaseClient'; // Correct import path
+import supabase from '../src/supabaseClient';
 
 export default function RegisterUser() {
   const [mode, setMode] = useState('register');
@@ -35,14 +35,19 @@ export default function RegisterUser() {
     fontSize: '1rem'
   };
 
-  // Fetch counties on mount
+  // Fetch counties on mount — copied logic from TestCounties.js
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
         .from('counties')
         .select('county_code, county_name')
         .order('county_name', { ascending: true });
-      if (!error && data) setCounties(data);
+      if (error) {
+        setErrorMsg('Error fetching counties: ' + error.message);
+      }
+      if (data) {
+        setCounties(data);
+      }
     })();
   }, []);
 
