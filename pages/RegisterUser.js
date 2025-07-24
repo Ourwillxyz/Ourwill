@@ -1,8 +1,14 @@
-import { useState } from 'react';
-import axios from 'axios'; // Make sure to install axios with `npm install axios`
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  'https://your-supabase-url.supabase.co', // replace with your Supabase URL
+  'your-anon-key' // replace with your Supabase anon key
+);
 
 export default function RegisterUser() {
-  const [mode, setMode] = useState('register'); // 'register' or 'login'
+  const [mode, setMode] = useState('register');
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -17,7 +23,12 @@ export default function RegisterUser() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Dropdown styling
+  // Dropdown data
+  const [counties, setCounties] = useState([]);
+  const [subcounties, setSubcounties] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [pollingCentres, setPollingCentres] = useState([]);
+
   const dropdownStyle = {
     width: '100%',
     padding: '0.6rem 0.8rem',
@@ -29,8 +40,83 @@ export default function RegisterUser() {
     fontSize: '1rem'
   };
 
+  // Fetch counties on mount
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from('county')
+        .select('id, name')
+        .order('name', { ascending: true });
+      if (!error) setCounties(data);
+    })();
+  }, []);
+
+  // Fetch subcounties when county changes
+  useEffect(() => {
+    if (!form.county) {
+      setSubcounties([]);
+      setForm(f => ({ ...f, subcounty: '', ward: '', polling_centre: '' }));
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase
+        .from('subcounty')
+        .select('id, name')
+        .eq('county_id', form.county)
+        .order('name', { ascending: true });
+      if (!error) setSubcounties(data);
+      setForm(f => ({ ...f, subcounty: '', ward: '', polling_centre: '' }));
+    })();
+  }, [form.county]);
+
+  // Fetch wards when subcounty changes
+  useEffect(() => {
+    if (!form.subcounty) {
+      setWards([]);
+      setForm(f => ({ ...f, ward: '', polling_centre: '' }));
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase
+        .from('ward')
+        .select('id, name')
+        .eq('subcounty_id', form.subcounty)
+        .order('name', { ascending: true });
+      if (!error) setWards(data);
+      setForm(f => ({ ...f, ward: '', polling_centre: '' }));
+    })();
+  }, [form.subcounty]);
+
+  // Fetch polling centres when ward changes
+  useEffect(() => {
+    if (!form.ward) {
+      setPollingCentres([]);
+      setForm(f => ({ ...f, polling_centre: '' }));
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase
+        .from('polling_centre')
+        .select('id, name')
+        .eq('ward_id', form.ward)
+        .order('name', { ascending: true });
+      if (!error) setPollingCentres(data);
+      setForm(f => ({ ...f, polling_centre: '' }));
+    })();
+  }, [form.ward]);
+
   function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    // Reset dependent fields if parent changes
+    if (name === 'county') {
+      setForm(f => ({ ...f, county: value, subcounty: '', ward: '', polling_centre: '' }));
+    } else if (name === 'subcounty') {
+      setForm(f => ({ ...f, subcounty: value, ward: '', polling_centre: '' }));
+    } else if (name === 'ward') {
+      setForm(f => ({ ...f, ward: value, polling_centre: '' }));
+    } else {
+      setForm(f => ({ ...f, [name]: value }));
+    }
   }
 
   async function handleSubmit(e) {
@@ -39,7 +125,6 @@ export default function RegisterUser() {
     setSuccessMsg('');
     setLoading(true);
 
-    // Basic validation
     for (const key in form) {
       if (!form[key]) {
         setErrorMsg('Please fill all fields.');
@@ -60,12 +145,11 @@ export default function RegisterUser() {
 
     try {
       if (mode === 'register') {
-        const res = await axios.post('/register', form); // Use full URL if needed
+        const res = await axios.post('https://your-backend.onrender.com/api/register', form); 
         setSuccessMsg(res.data.message || 'Registration successful! Please verify your email/mobile.');
       } else {
-        // For login, you can send email+password to /login (implement backend accordingly)
         const { email, password } = form;
-        const res = await axios.post('/login', { email, password });
+        const res = await axios.post('https://your-backend.onrender.com/api/login', { email, password });
         setSuccessMsg(res.data.message || 'Login successful!');
       }
     } catch (err) {
@@ -166,38 +250,66 @@ export default function RegisterUser() {
             required
             style={dropdownStyle}
           />
-          <input
+
+          {/* County Dropdown */}
+          <select
             name="county"
-            placeholder="County"
             value={form.county}
             onChange={handleChange}
             required
             style={dropdownStyle}
-          />
-          <input
+          >
+            <option value="">Select County</option>
+            {counties.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+
+          {/* Subcounty Dropdown */}
+          <select
             name="subcounty"
-            placeholder="Subcounty"
             value={form.subcounty}
             onChange={handleChange}
             required
             style={dropdownStyle}
-          />
-          <input
+            disabled={!form.county}
+          >
+            <option value="">Select Subcounty</option>
+            {subcounties.map(sc => (
+              <option key={sc.id} value={sc.id}>{sc.name}</option>
+            ))}
+          </select>
+
+          {/* Ward Dropdown */}
+          <select
             name="ward"
-            placeholder="Ward"
             value={form.ward}
             onChange={handleChange}
             required
             style={dropdownStyle}
-          />
-          <input
+            disabled={!form.subcounty}
+          >
+            <option value="">Select Ward</option>
+            {wards.map(w => (
+              <option key={w.id} value={w.id}>{w.name}</option>
+            ))}
+          </select>
+
+          {/* Polling Centre Dropdown */}
+          <select
             name="polling_centre"
-            placeholder="Polling Centre"
             value={form.polling_centre}
             onChange={handleChange}
             required
             style={dropdownStyle}
-          />
+            disabled={!form.ward}
+          >
+            <option value="">Select Polling Centre</option>
+            {pollingCentres.map(pc => (
+              <option key={pc.id} value={pc.name}>{pc.name}</option>
+            ))}
+          </select>
+
           <input
             name="password"
             type="password"
