@@ -23,7 +23,6 @@ export default function RegisterUser() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Dropdown data
   const [counties, setCounties] = useState([]);
   const [subcounties, setSubcounties] = useState([]);
   const [wards, setWards] = useState([]);
@@ -42,80 +41,96 @@ export default function RegisterUser() {
 
   // Fetch counties on mount
   useEffect(() => {
-    (async () => {
+    async function fetchCounties() {
       const { data, error } = await supabase
         .from('county')
         .select('id, name')
         .order('name', { ascending: true });
-      if (!error) setCounties(data);
-    })();
+      if (!error) setCounties(data || []);
+    }
+    fetchCounties();
   }, []);
 
   // Fetch subcounties when county changes
   useEffect(() => {
-    if (!form.county) {
-      setSubcounties([]);
-      setForm(f => ({ ...f, subcounty: '', ward: '', polling_centre: '' }));
-      return;
-    }
-    (async () => {
+    async function fetchSubcounties() {
+      if (!form.county) {
+        setSubcounties([]);
+        return;
+      }
       const { data, error } = await supabase
         .from('subcounty')
         .select('id, name')
         .eq('county_id', form.county)
         .order('name', { ascending: true });
-      if (!error) setSubcounties(data);
-      setForm(f => ({ ...f, subcounty: '', ward: '', polling_centre: '' }));
-    })();
+      setSubcounties(!error ? data : []);
+    }
+    fetchSubcounties();
   }, [form.county]);
 
   // Fetch wards when subcounty changes
   useEffect(() => {
-    if (!form.subcounty) {
-      setWards([]);
-      setForm(f => ({ ...f, ward: '', polling_centre: '' }));
-      return;
-    }
-    (async () => {
+    async function fetchWards() {
+      if (!form.subcounty) {
+        setWards([]);
+        return;
+      }
       const { data, error } = await supabase
         .from('ward')
         .select('id, name')
         .eq('subcounty_id', form.subcounty)
         .order('name', { ascending: true });
-      if (!error) setWards(data);
-      setForm(f => ({ ...f, ward: '', polling_centre: '' }));
-    })();
+      setWards(!error ? data : []);
+    }
+    fetchWards();
   }, [form.subcounty]);
 
   // Fetch polling centres when ward changes
   useEffect(() => {
-    if (!form.ward) {
-      setPollingCentres([]);
-      setForm(f => ({ ...f, polling_centre: '' }));
-      return;
-    }
-    (async () => {
+    async function fetchPollingCentres() {
+      if (!form.ward) {
+        setPollingCentres([]);
+        return;
+      }
       const { data, error } = await supabase
         .from('polling_centre')
         .select('id, name')
         .eq('ward_id', form.ward)
         .order('name', { ascending: true });
-      if (!error) setPollingCentres(data);
-      setForm(f => ({ ...f, polling_centre: '' }));
-    })();
+      setPollingCentres(!error ? data : []);
+    }
+    fetchPollingCentres();
   }, [form.ward]);
 
   function handleChange(e) {
     const { name, value } = e.target;
-    // Reset dependent fields if parent changes
+    // Reset dependent fields for cascading dropdowns
     if (name === 'county') {
-      setForm(f => ({ ...f, county: value, subcounty: '', ward: '', polling_centre: '' }));
+      setForm(f => ({
+        ...f,
+        county: value,
+        subcounty: '',
+        ward: '',
+        polling_centre: ''
+      }));
     } else if (name === 'subcounty') {
-      setForm(f => ({ ...f, subcounty: value, ward: '', polling_centre: '' }));
+      setForm(f => ({
+        ...f,
+        subcounty: value,
+        ward: '',
+        polling_centre: ''
+      }));
     } else if (name === 'ward') {
-      setForm(f => ({ ...f, ward: value, polling_centre: '' }));
+      setForm(f => ({
+        ...f,
+        ward: value,
+        polling_centre: ''
+      }));
     } else {
-      setForm(f => ({ ...f, [name]: value }));
+      setForm(f => ({
+        ...f,
+        [name]: value
+      }));
     }
   }
 
@@ -272,7 +287,7 @@ export default function RegisterUser() {
             onChange={handleChange}
             required
             style={dropdownStyle}
-            disabled={!form.county}
+            disabled={!form.county || subcounties.length === 0}
           >
             <option value="">Select Subcounty</option>
             {subcounties.map(sc => (
@@ -287,7 +302,7 @@ export default function RegisterUser() {
             onChange={handleChange}
             required
             style={dropdownStyle}
-            disabled={!form.subcounty}
+            disabled={!form.subcounty || wards.length === 0}
           >
             <option value="">Select Ward</option>
             {wards.map(w => (
@@ -302,7 +317,7 @@ export default function RegisterUser() {
             onChange={handleChange}
             required
             style={dropdownStyle}
-            disabled={!form.ward}
+            disabled={!form.ward || pollingCentres.length === 0}
           >
             <option value="">Select Polling Centre</option>
             {pollingCentres.map(pc => (
