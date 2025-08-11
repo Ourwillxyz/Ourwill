@@ -11,10 +11,10 @@ export default function CompleteProfile() {
   const [pollingCentres, setPollingCentres] = useState([]);
   const [formData, setFormData] = useState({
     mobile: '',
-    county: '',
-    subcounty: '',
-    ward: '',
-    polling_centre: '',
+    county_code: '',
+    subcounty_code: '',
+    ward_code: '',
+    polling_centre_code: '',
   });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -43,48 +43,48 @@ export default function CompleteProfile() {
 
   useEffect(() => {
     const fetchSubcounties = async () => {
-      if (!formData.county) {
+      if (!formData.county_code) {
         setSubcounties([]);
         return;
       }
       const { data } = await supabase
         .from('subcounties')
         .select()
-        .eq('county_code', formData.county);
+        .eq('county_code', formData.county_code);
       setSubcounties(data || []);
     };
     fetchSubcounties();
-  }, [formData.county]);
+  }, [formData.county_code]);
 
   useEffect(() => {
     const fetchWards = async () => {
-      if (!formData.subcounty) {
+      if (!formData.subcounty_code) {
         setWards([]);
         return;
       }
       const { data } = await supabase
         .from('wards')
         .select()
-        .eq('subcounty_code', formData.subcounty);
+        .eq('subcounty_code', formData.subcounty_code);
       setWards(data || []);
     };
     fetchWards();
-  }, [formData.subcounty]);
+  }, [formData.subcounty_code]);
 
   useEffect(() => {
     const fetchPollingCentres = async () => {
-      if (!formData.ward) {
+      if (!formData.ward_code) {
         setPollingCentres([]);
         return;
       }
       const { data } = await supabase
         .from('polling_centres')
         .select()
-        .eq('ward_code', formData.ward);
+        .eq('ward_code', formData.ward_code);
       setPollingCentres(data || []);
     };
     fetchPollingCentres();
-  }, [formData.ward]);
+  }, [formData.ward_code]);
 
   const handleChange = (e) => {
     setErrorMsg('');
@@ -102,30 +102,43 @@ export default function CompleteProfile() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Check for duplicate mobile
-    const { data: existingUser } = await supabase
-      .from('voter')
+    // Check for duplicate mobile in profiles (optional, comment out if not needed)
+    const { data: existingMobile } = await supabase
+      .from('profiles')
       .select('id')
       .eq('mobile', formData.mobile)
       .single();
 
-    if (existingUser) {
+    if (existingMobile) {
       setErrorMsg('This mobile number is already registered. Please use a different number or contact support.');
       setLoading(false);
       return;
     }
 
-    // Insert voter profile using Auth user.id as PK
+    // Check if profile already exists for this user
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+
+    if (existingProfile) {
+      setErrorMsg('Profile already exists for this user.');
+      setLoading(false);
+      return;
+    }
+
+    // Insert profile using Auth user.id as PK
     const { error } = await supabase
-      .from('voter')
+      .from('profiles')
       .insert([{
         id: user.id,
         email: user.email,
         mobile: formData.mobile,
-        county: formData.county,
-        subcounty: formData.subcounty,
-        ward: formData.ward,
-        polling_centre: formData.polling_centre,
+        county_code: formData.county_code,
+        subcounty_code: formData.subcounty_code,
+        ward_code: formData.ward_code,
+        polling_centre_code: formData.polling_centre_code,
       }]);
 
     if (error) {
@@ -209,25 +222,25 @@ export default function CompleteProfile() {
             onChange={handleChange}
             style={dropdownStyle}
           />
-          <select id="county" name="county" required value={formData.county} onChange={handleChange} style={dropdownStyle}>
+          <select id="county_code" name="county_code" required value={formData.county_code} onChange={handleChange} style={dropdownStyle}>
             <option value="">Select County</option>
             {counties.map((c) => (
               <option key={c.county_code} value={c.county_code}>{c.county_name}</option>
             ))}
           </select>
-          <select id="subcounty" name="subcounty" required value={formData.subcounty} onChange={handleChange} style={dropdownStyle}>
+          <select id="subcounty_code" name="subcounty_code" required value={formData.subcounty_code} onChange={handleChange} style={dropdownStyle}>
             <option value="">Select Subcounty</option>
             {subcounties.map((sc) => (
               <option key={sc.subcounty_code} value={sc.subcounty_code}>{sc.subcounty_name}</option>
             ))}
           </select>
-          <select id="ward" name="ward" required value={formData.ward} onChange={handleChange} style={dropdownStyle}>
+          <select id="ward_code" name="ward_code" required value={formData.ward_code} onChange={handleChange} style={dropdownStyle}>
             <option value="">Select Ward</option>
             {wards.map((w) => (
               <option key={w.ward_code} value={w.ward_code}>{w.ward_name}</option>
             ))}
           </select>
-          <select id="polling_centre" name="polling_centre" required value={formData.polling_centre} onChange={handleChange} style={dropdownStyle}>
+          <select id="polling_centre_code" name="polling_centre_code" required value={formData.polling_centre_code} onChange={handleChange} style={dropdownStyle}>
             <option value="">Select Polling Centre</option>
             {pollingCentres.map((pc) => (
               <option key={pc.polling_centre_code} value={pc.polling_centre_code}>{pc.polling_centre_name}</option>
