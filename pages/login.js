@@ -17,10 +17,10 @@ export default function Login() {
 
   const [profile, setProfile] = useState({
     mobile: '',
-    county: '',
-    subcounty: '',
-    ward: '',
-    polling_centre: ''
+    county_code: '',
+    subcounty_code: '',
+    ward_code: '',
+    polling_centre_code: ''
   });
 
   const router = useRouter();
@@ -76,79 +76,80 @@ export default function Login() {
   }, [showProfileForm]);
 
   useEffect(() => {
-    if (showProfileForm && profile.county) {
+    if (showProfileForm && profile.county_code) {
       supabase
         .from('subcounties')
         .select()
-        .eq('county_code', profile.county)
+        .eq('county_code', profile.county_code)
         .then(({ data }) => setSubcounties(data || []));
     } else {
       setSubcounties([]);
     }
-    if (!profile.county) setProfile((p) => ({ ...p, subcounty: '', ward: '', polling_centre: '' }));
-  }, [showProfileForm, profile.county]);
+    if (!profile.county_code) setProfile((p) => ({ ...p, subcounty_code: '', ward_code: '', polling_centre_code: '' }));
+  }, [showProfileForm, profile.county_code]);
 
   useEffect(() => {
-    if (showProfileForm && profile.subcounty) {
+    if (showProfileForm && profile.subcounty_code) {
       supabase
         .from('wards')
         .select()
-        .eq('subcounty_code', profile.subcounty)
+        .eq('subcounty_code', profile.subcounty_code)
         .then(({ data }) => setWards(data || []));
     } else {
       setWards([]);
     }
-    if (!profile.subcounty) setProfile((p) => ({ ...p, ward: '', polling_centre: '' }));
-  }, [showProfileForm, profile.subcounty]);
+    if (!profile.subcounty_code) setProfile((p) => ({ ...p, ward_code: '', polling_centre_code: '' }));
+  }, [showProfileForm, profile.subcounty_code]);
 
   useEffect(() => {
-    if (showProfileForm && profile.ward) {
+    if (showProfileForm && profile.ward_code) {
       supabase
         .from('polling_centres')
         .select()
-        .eq('ward_code', profile.ward)
+        .eq('ward_code', profile.ward_code)
         .then(({ data }) => setPollingCentres(data || []));
     } else {
       setPollingCentres([]);
     }
-    if (!profile.ward) setProfile((p) => ({ ...p, polling_centre: '' }));
-  }, [showProfileForm, profile.ward]);
+    if (!profile.ward_code) setProfile((p) => ({ ...p, polling_centre_code: '' }));
+  }, [showProfileForm, profile.ward_code]);
 
-  // After authentication, check if user is in voter table and has all required info
+  // After authentication, check if user is in profiles table and has all required info
   useEffect(() => {
-    const syncVoterTable = async () => {
+    const syncProfilesTable = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Check if already in voter table
-      const { data: voter } = await supabase
-        .from('voter')
+      // Check if already in profiles table
+      const { data: profileRow } = await supabase
+        .from('profiles')
         .select('*')
-        .eq('email', user.email)
+        .eq('id', user.id)
         .single();
 
       const meta = user.user_metadata || {};
       const allFieldsPresent =
-        meta.mobile && meta.county && meta.subcounty && meta.ward && meta.polling_centre;
+        meta.mobile && meta.county_code && meta.subcounty_code && meta.ward_code && meta.polling_centre_code;
 
-      if (!voter) {
+      if (!profileRow) {
         if (allFieldsPresent) {
-          await supabase.from('voter').insert([{
+          await supabase.from('profiles').insert([{
+            id: user.id,
             email: user.email,
             mobile: meta.mobile,
-            county: meta.county,
-            subcounty: meta.subcounty,
-            ward: meta.ward,
-            polling_centre: meta.polling_centre
+            county_code: meta.county_code,
+            subcounty_code: meta.subcounty_code,
+            ward_code: meta.ward_code,
+            polling_centre_code: meta.polling_centre_code
           }]);
           router.push('/dashboard');
         } else {
           setProfile({
             mobile: meta.mobile || '',
-            county: meta.county || '',
-            subcounty: meta.subcounty || '',
-            ward: meta.ward || '',
-            polling_centre: meta.polling_centre || ''
+            county_code: meta.county_code || '',
+            subcounty_code: meta.subcounty_code || '',
+            ward_code: meta.ward_code || '',
+            polling_centre_code: meta.polling_centre_code || ''
           });
           setShowProfileForm(true);
         }
@@ -156,7 +157,7 @@ export default function Login() {
         router.push('/dashboard');
       }
     };
-    syncVoterTable();
+    syncProfilesTable();
   }, [router]);
 
   // Handle profile form changes
@@ -165,9 +166,9 @@ export default function Login() {
     setProfile((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === "county" ? { subcounty: '', ward: '', polling_centre: '' } : {}),
-      ...(name === "subcounty" ? { ward: '', polling_centre: '' } : {}),
-      ...(name === "ward" ? { polling_centre: '' } : {})
+      ...(name === "county_code" ? { subcounty_code: '', ward_code: '', polling_centre_code: '' } : {}),
+      ...(name === "subcounty_code" ? { ward_code: '', polling_centre_code: '' } : {}),
+      ...(name === "ward_code" ? { polling_centre_code: '' } : {})
     }));
   };
 
@@ -176,10 +177,11 @@ export default function Login() {
     e.preventDefault();
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.auth.updateUser({ data: profile });
-    await supabase.from('voter').upsert([{
+    await supabase.from('profiles').upsert([{
+      id: user.id,
       email: user.email,
       ...profile
-    }], { onConflict: ['email'] });
+    }], { onConflict: ['id'] });
     router.push('/dashboard');
   };
 
@@ -224,25 +226,25 @@ export default function Login() {
             required
             style={dropdownStyle}
           />
-          <select name="county" value={profile.county} onChange={handleProfileChange} required style={dropdownStyle}>
+          <select name="county_code" value={profile.county_code} onChange={handleProfileChange} required style={dropdownStyle}>
             <option value="">Select County</option>
             {counties.map((c) => (
               <option key={c.county_code} value={c.county_code}>{c.county_name}</option>
             ))}
           </select>
-          <select name="subcounty" value={profile.subcounty} onChange={handleProfileChange} required style={dropdownStyle} disabled={!profile.county}>
+          <select name="subcounty_code" value={profile.subcounty_code} onChange={handleProfileChange} required style={dropdownStyle} disabled={!profile.county_code}>
             <option value="">Select Subcounty</option>
             {subcounties.map((sc) => (
               <option key={sc.subcounty_code} value={sc.subcounty_code}>{sc.subcounty_name}</option>
             ))}
           </select>
-          <select name="ward" value={profile.ward} onChange={handleProfileChange} required style={dropdownStyle} disabled={!profile.subcounty}>
+          <select name="ward_code" value={profile.ward_code} onChange={handleProfileChange} required style={dropdownStyle} disabled={!profile.subcounty_code}>
             <option value="">Select Ward</option>
             {wards.map((w) => (
               <option key={w.ward_code} value={w.ward_code}>{w.ward_name}</option>
             ))}
           </select>
-          <select name="polling_centre" value={profile.polling_centre} onChange={handleProfileChange} required style={dropdownStyle} disabled={!profile.ward}>
+          <select name="polling_centre_code" value={profile.polling_centre_code} onChange={handleProfileChange} required style={dropdownStyle} disabled={!profile.ward_code}>
             <option value="">Select Polling Centre</option>
             {pollingCentres.map((pc) => (
               <option key={pc.polling_centre_code} value={pc.polling_centre_code}>{pc.polling_centre_name}</option>
