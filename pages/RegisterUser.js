@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import supabase from '../src/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+import supabase from '../src/supabaseClient'; // If you have your supabaseClient configured, you can use this instead
+
+// If you don't have supabaseClient.js already set up, uncomment and use below:
+// const supabase = createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
 
 export default function RegisterUser() {
   const [mode, setMode] = useState('register');
@@ -161,33 +164,58 @@ export default function RegisterUser() {
       return;
     }
 
-    // Extract username from email
-    const username = getUsernameFromEmail(form.email);
-
     try {
       if (mode === 'register') {
-        // Send the form with username extracted from email
-        const res = await axios.post('https://your-backend.onrender.com/api/register', {
-          username,
+        // Register user with Supabase Auth
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: form.email,
-          mobile: form.mobile,
-          county: form.county_code,
-          subcounty: form.subcounty_code,
-          ward: form.ward_code,
-          polling_centre: form.polling_centre_code,
-          password: form.password
-        }); 
-        setSuccessMsg(res.data.message || 'Registration successful! Please verify your email/mobile.');
+          password: form.password,
+        });
+        if (signUpError) {
+          setErrorMsg(signUpError.message);
+          setLoading(false);
+          return;
+        }
+        const userId = signUpData.user?.id;
+        if (!userId) {
+          setErrorMsg('Could not retrieve user ID after sign up.');
+          setLoading(false);
+          return;
+        }
+
+        // Insert user profile info
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: userId,
+            mobile: form.mobile,
+            county_code: form.county_code,
+            subcounty_code: form.subcounty_code,
+            ward_code: form.ward_code,
+            polling_centre_code: form.polling_centre_code,
+            // You can add more fields here if your table supports them
+          }]);
+        if (profileError) {
+          setErrorMsg('Registration failed while saving profile: ' + profileError.message);
+          setLoading(false);
+          return;
+        }
+        setSuccessMsg('Registration successful! Please check your email for a verification link.');
       } else {
-        const { email, password } = form;
-        const res = await axios.post('https://your-backend.onrender.com/api/login', { email, password });
-        setSuccessMsg(res.data.message || 'Login successful!');
+        // Login with Supabase Auth
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password,
+        });
+        if (signInError) {
+          setErrorMsg(signInError.message || 'Login failed.');
+          setLoading(false);
+          return;
+        }
+        setSuccessMsg('Login successful!');
       }
     } catch (err) {
-      setErrorMsg(
-        err.response?.data?.message ||
-        (mode === 'register' ? 'Registration failed.' : 'Login failed.')
-      );
+      setErrorMsg('An unexpected error occurred.');
     }
     setLoading(false);
   }
