@@ -4,9 +4,9 @@ import { supabase } from '../src/supabaseClient';
 
 export default function Login() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
-  const [linkSent, setLinkSent] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
 
   // Dropdown data
@@ -25,45 +25,20 @@ export default function Login() {
 
   const router = useRouter();
 
-  // Send magic link with redirect to login (not dashboard, so logic can run here)
+  // Password login handler
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMsg('');
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login`
-      }
-    });
-    if (error) {
-      setMsg('Error: ' + error.message);
-      setLinkSent(false);
-    } else {
-      setMsg(
-        `A login link has been sent! Please check your email and follow the link to continue.<br /><strong>Please open the magic link in the same device and browser where you requested it.</strong>`
-      );
-      setLinkSent(true);
-    }
-    setLoading(false);
-  };
-
-  const handleResend = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMsg('');
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login`
-      }
+      password,
     });
     if (error) {
       setMsg('Error: ' + error.message);
     } else {
-      setMsg(
-        `A login link has been resent! Please check your email (and spam folder) to continue.<br /><strong>Please open the magic link in the same device and browser where you requested it.</strong>`
-      );
+      setMsg('');
+      // Auth state will be updated, so the profile check useEffect will run
     }
     setLoading(false);
   };
@@ -85,7 +60,8 @@ export default function Login() {
     } else {
       setSubcounties([]);
     }
-    if (!profile.county_code) setProfile((p) => ({ ...p, subcounty_code: '', ward_code: '', polling_centre_code: '' }));
+    if (!profile.county_code)
+      setProfile((p) => ({ ...p, subcounty_code: '', ward_code: '', polling_centre_code: '' }));
   }, [showProfileForm, profile.county_code]);
 
   useEffect(() => {
@@ -98,7 +74,8 @@ export default function Login() {
     } else {
       setWards([]);
     }
-    if (!profile.subcounty_code) setProfile((p) => ({ ...p, ward_code: '', polling_centre_code: '' }));
+    if (!profile.subcounty_code)
+      setProfile((p) => ({ ...p, ward_code: '', polling_centre_code: '' }));
   }, [showProfileForm, profile.subcounty_code]);
 
   useEffect(() => {
@@ -111,7 +88,8 @@ export default function Login() {
     } else {
       setPollingCentres([]);
     }
-    if (!profile.ward_code) setProfile((p) => ({ ...p, polling_centre_code: '' }));
+    if (!profile.ward_code)
+      setProfile((p) => ({ ...p, polling_centre_code: '' }));
   }, [showProfileForm, profile.ward_code]);
 
   // After authentication, check if user is in profiles table and has all required info
@@ -373,9 +351,26 @@ export default function Login() {
                 background: '#f7f7fa'
               }}
             />
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                marginBottom: 16,
+                borderRadius: 8,
+                border: '1px solid #d1d5db',
+                fontSize: '1rem',
+                background: '#f7f7fa'
+              }}
+            />
             <button
               type="submit"
-              disabled={loading || !email}
+              disabled={loading || !email || !password}
               style={{
                 width: '100%',
                 padding: '12px 0',
@@ -389,27 +384,7 @@ export default function Login() {
                 transition: 'background 0.2s'
               }}
             >
-              {loading ? 'Sending...' : 'Send Magic Link'}
-            </button>
-            <button
-              type="button"
-              disabled={loading || !linkSent || !email}
-              onClick={handleResend}
-              style={{
-                width: '100%',
-                padding: '12px 0',
-                borderRadius: 8,
-                border: 'none',
-                background: (!linkSent || loading) ? '#d1d5db' : '#f59e42',
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: '1rem',
-                cursor: (!linkSent || loading) ? 'not-allowed' : 'pointer',
-                marginTop: 8,
-                transition: 'background 0.2s'
-              }}
-            >
-              Resend Magic Link
+              {loading ? 'Logging in...' : 'Login'}
             </button>
             {msg && (
               <div
@@ -423,13 +398,10 @@ export default function Login() {
             )}
             <div style={{ marginTop: 24, color: '#555', fontSize: '0.97em', lineHeight: 1.5 }}>
               <p>
-                <strong>Note:</strong> To continue, go to your email and follow the login link we sent you.
+                <strong>Note:</strong> Login with your registered email and password.
               </p>
               <p>
-                <strong>Important:</strong> Please open the magic link in the same device and browser where you requested it.
-              </p>
-              <p>
-                If you don't see the email, check your spam or promotions folder.
+                <strong>Forgot your password?</strong> Reset it from the registration page.
               </p>
             </div>
           </form>
