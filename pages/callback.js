@@ -1,23 +1,41 @@
 // pages/auth/callback.js
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import { supabase } from "../../supabaseClient";
+import { supabase } from "../../src/supabaseClient";
 
 export default function Callback() {
   const router = useRouter();
 
   useEffect(() => {
     const handleCallback = async () => {
-      const { data, error } = await supabase.auth.getSession();
+      try {
+        // Supabase parses URL fragment automatically
+        const { data, error } = await supabase.auth.getSession();
 
-      if (error) {
-        console.error("Error getting session:", error.message);
-        return;
-      }
+        if (error) {
+          console.error("Session fetch error:", error);
+          router.replace("/login?error=auth");
+          return;
+        }
 
-      if (data?.session) {
-        // Redirect to set password page
-        router.push("/set-password");
+        if (data?.session) {
+          // User is authenticated 🎉
+          router.replace("/dashboard");
+        } else {
+          // If session not yet available, try exchange
+          const { data: hashData, error: hashError } =
+            await supabase.auth.exchangeCodeForSession(window.location.href);
+
+          if (hashError) {
+            console.error("Exchange error:", hashError);
+            router.replace("/login?error=auth");
+          } else {
+            router.replace("/dashboard");
+          }
+        }
+      } catch (err) {
+        console.error("Callback handling failed:", err);
+        router.replace("/login?error=server");
       }
     };
 
@@ -25,9 +43,16 @@ export default function Callback() {
   }, [router]);
 
   return (
-    <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
-      <h2>Verifying login...</h2>
-      <p>Please wait while we confirm your email.</p>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "1.4rem",
+      }}
+    >
+      Verifying login...
     </div>
   );
 }
