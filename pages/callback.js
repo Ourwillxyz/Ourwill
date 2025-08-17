@@ -1,85 +1,100 @@
 // pages/callback.js
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { supabase } from '../src/supabaseClient';
-import sha256 from 'crypto-js/sha256';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { supabase } from "../src/supabaseClient";
+import sha256 from "crypto-js/sha256";
 
 export default function Callback() {
-  const [message, setMessage] = useState('Verifying...');
+  const [message, setMessage] = useState("Verifying...");
   const router = useRouter();
 
   useEffect(() => {
     const verifyUser = async () => {
       try {
-        // Step 1: Exchange the magic link token for a session
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession();
-        if (exchangeError) {
-          console.error('Token exchange failed:', exchangeError.message);
-          setMessage('❌ Invalid or expired link.');
+        // Step 1: Get or exchange session
+        let sessionResponse;
+
+        if (router.query.code) {
+          // Case: redirect returned ?code=... (use exchangeCodeForSession)
+          sessionResponse = await supabase.auth.exchangeCodeForSession(router.query.code);
+        } else {
+          // Case: redirect returned #access_token=... (default magic link)
+          sessionResponse = await supabase.auth.getSession();
+        }
+
+        if (sessionResponse.error) {
+          console.error("Auth session error:", sessionResponse.error.message);
+          setMessage("❌ Invalid or expired link.");
           return;
         }
 
-        // Step 2: Get session details
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session?.user?.email) {
-          console.error('Session error:', sessionError);
-          setMessage('❌ Could not retrieve user session.');
+        const session = sessionResponse.data?.session;
+        if (!session?.user?.email) {
+          setMessage("❌ Could not retrieve user session.");
           return;
         }
 
         const email = session.user.email;
 
-        // Step 3: Get pending registration data
-        const pending = JSON.parse(localStorage.getItem('pending_registration') || '{}');
+        // Step 2: Retrieve pending registration data
+        const pending = JSON.parse(localStorage.getItem("pending_registration") || "{}");
         const { username, mobile, county, subcounty, ward, polling_centre } = pending;
 
         if (!username || !mobile || !county || !subcounty || !ward || !polling_centre) {
-          setMessage('❌ Missing registration data.');
+          setMessage("❌ Missing registration data.");
           return;
         }
 
-        // Step 4: Create a hash of the voter identity
+        // Step 3: Create a hash of voter identity
         const voterHash = sha256(`${email}:${mobile}:${username}`).toString();
 
-        // Step 5: Check for existing voter using the hash
-        const { data: existing } = await supabase
-          .from('voter')
-          .select('id')
-          .eq('voter_hash', voterHash)
+        // Step 4: Check for existing voter
+        const { data: existing, error: existingError } = await supabase
+          .from("voter")
+          .select("id")
+          .eq("voter_hash", voterHash)
           .maybeSingle();
 
-        if (existing) {
-          setMessage('❌ This account is already registered.');
+        if (existingError) {
+          console.error("Error checking voter:", existingError);
+          setMessage("❌ Failed to check existing voter.");
           return;
         }
 
-        // Step 6: Insert new voter record
-        const { error: insertError } = await supabase.from('voter').insert([{
-          username,
-          email: null, // Hide actual email
-          mobile: null, // Hide actual mobile
-          county,
-          subcounty,
-          ward,
-          polling_centre,
-          voter_hash: voterHash,
-          status: 'verified'
-        }]);
+        if (existing?.id) {
+          setMessage("❌ This account is already registered.");
+          return;
+        }
+
+        // Step 5: Insert new voter record
+        const { error: insertError } = await supabase.from("voter").insert([
+          {
+            username,
+            email: null, // ⚠️ consider storing encrypted instead of null
+            mobile: null,
+            county,
+            subcounty,
+            ward,
+            polling_centre,
+            voter_hash: voterHash,
+            status: "verified",
+          },
+        ]);
 
         if (insertError) {
-          console.error('Insert error:', insertError);
-          setMessage('❌ Failed to save voter record.');
+          console.error("Insert error:", insertError);
+          setMessage("❌ Failed to save voter record.");
           return;
         }
 
-        // Step 7: Cleanup and redirect
-        localStorage.removeItem('pending_registration');
-        setMessage('✅ Registration complete! Redirecting...');
-        setTimeout(() => router.push('/dashboard'), 2000);
+        // Step 6: Cleanup and redirect
+        localStorage.removeItem("pending_registration");
+        setMessage("✅ Registration complete! Redirecting...");
+        router.replace("/dashboard");
 
       } catch (error) {
-        console.error('Unexpected error:', error);
-        setMessage('❌ Something went wrong.');
+        console.error("Unexpected error:", error);
+        setMessage("❌ Something went wrong.");
       }
     };
 
@@ -89,7 +104,7 @@ export default function Callback() {
   }, [router]);
 
   return (
-    <div style={{ padding: 40, textAlign: 'center' }}>
+    <div style={{ padding: 40, textAlign: "center" }}>
       <h2>{message}</h2>
     </div>
   );
