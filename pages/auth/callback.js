@@ -16,30 +16,15 @@ export default function Callback() {
       }
 
       const session = data?.session;
-
       if (!session) {
         router.push("/login");
         return;
       }
 
-      // ✅ User is logged in
       const user = session.user;
 
-      // Check if user already has a password set
-      const { data: identities, error: identityError } = await supabase.auth.admin.listIdentities();
-
-      if (identityError) {
-        console.error("Error checking identities:", identityError.message);
-        router.push("/dashboard");
-        return;
-      }
-
-      // If the user doesn’t have a password, send them to set-password
-      const hasPassword = identities.identities?.some(
-        (identity) => identity.provider === "email"
-      );
-
-      if (!hasPassword) {
+      // 👉 If user has no password yet, redirect to set-password
+      if (!user.user_metadata?.has_password) {
         router.push("/set-password");
       } else {
         router.push("/dashboard");
