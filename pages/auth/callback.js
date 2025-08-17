@@ -1,99 +1,75 @@
 // File: pages/auth/callback.js
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../src/supabaseClient';
+import { supabase } from '../../src/supabaseClient';
 
 export default function Callback() {
   const router = useRouter();
   const [msg, setMsg] = useState('Finishing login... please wait.');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const finishLogin = async () => {
+    const handleAuthCallback = async () => {
       try {
-        // 1. Get logged-in user
+        // Get current user from Supabase auth
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          setMsg('Error retrieving user info. Redirecting to signup...');
-          setTimeout(() => router.replace('/trial-email-signup'), 2000);
+        if (userError) throw userError;
+
+        if (!user) {
+          setMsg('User not found. Redirecting to signup...');
+          setTimeout(() => router.push('/trial-email-signup'), 2000);
           return;
         }
 
-        // 2. Check if user exists in profiles
-        let { data: profile, error: profileError } = await supabase
+        // Check if user exists in profiles table
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
 
-        if (!profile) {
-          // 3. Check voter table
-          const { data: voter, error: voterError } = await supabase
-            .from('voter')
-            .select('*')
-            .eq('auth_user_id', user.id)
-            .single();
-
-          if (voter) {
-            // 4. Populate profiles from voter
-            const { data: insertedProfile, error: insertError } = await supabase
-              .from('profiles')
-              .insert([{
-                id: user.id,
-                email: user.email,
-                mobile: voter.mobile || '',
-                county_code: voter.county || '',
-                subcounty_code: voter.subcounty || '',
-                ward_code: voter.ward || '',
-                polling_centre_code: voter.polling_centre || ''
-              }])
-              .select()
-              .single();
-
-            if (insertError) {
-              setMsg('Error populating profile. Please try again.');
-              return;
-            }
-
-            // 5. Redirect to set-password page
-            router.replace('/set-password');
-            return;
-          } else {
-            // 6. Voter not found, redirect to trial-email-signup
-            setMsg('User not found. Redirecting to signup...');
-            setTimeout(() => router.replace('/trial-email-signup'), 2000);
-            return;
-          }
-        } else {
-          // Profile exists, redirect to set-password if password not set
-          const { data: userDetails } = await supabase.auth.admin.getUserById(user.id);
-          if (!userDetails?.password_hash) {
-            router.replace('/set-password');
-            return;
-          }
-
-          // Otherwise, go to dashboard
-          router.replace('/dashboard');
+        if (profileError && profileError.code !== 'PGRST116') {
+          // Any error other than "no rows found"
+          throw profileError;
         }
-      } catch (err) {
-        console.error('Callback error:', err);
-        setMsg('Unexpected error. Redirecting to login...');
-        setTimeout(() => router.replace('/login'), 2000);
+
+        if (!profileData) {
+          // Profile not yet created, redirect to set-password.js
+          router.push('/set-password');
+        } else {
+          // Profile exists, redirect to dashboard
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('Callback error:', error);
+        setMsg('Unexpected error, please try again.');
+        setLoading(false);
       }
     };
 
-    finishLogin();
+    handleAuthCallback();
   }, [router]);
 
   return (
     <div style={{
       minHeight: '100vh',
       display: 'flex',
-      justifyContent: 'center',
       alignItems: 'center',
-      fontSize: 18,
-      fontWeight: 500
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #ece9f7 0%, #fff 100%)',
+      textAlign: 'center',
+      padding: '2rem'
     }}>
-      {msg}
+      <div style={{
+        background: '#fff',
+        padding: '2rem 3rem',
+        borderRadius: 16,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.17)',
+        maxWidth: 400
+      }}>
+        <h2 style={{ color: '#4733a8', marginBottom: 16 }}>{msg}</h2>
+        {loading && <p style={{ color: '#4f46e5' }}>Please wait...</p>}
+      </div>
     </div>
   );
 }
