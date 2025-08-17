@@ -1,7 +1,7 @@
 // pages/auth/callback.js
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import supabase from "../../supabaseClient";
+import supabase from "../../src/supabaseClient";  // 👈 fixed path
 
 export default function Callback() {
   const router = useRouter();
@@ -9,7 +9,6 @@ export default function Callback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the current session
         const {
           data: { session },
           error,
@@ -28,8 +27,6 @@ export default function Callback() {
         }
 
         const user = session.user;
-
-        // 👇 check if password is missing
         const hasPassword = user.app_metadata?.provider === "email";
 
         if (!hasPassword) {
