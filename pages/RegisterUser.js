@@ -190,9 +190,9 @@ export default function RegisterUser() {
           return;
         }
 
-        // Send password reset for email verification
+        // Send password reset for email verification (using your main site as redirect)
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email, {
-          redirectTo: 'https://ourwill.vercel.app/login', // Replace with your real confirmation URL
+          redirectTo: 'https://ourwill.vercel.app', // Use your main site URL, not "/login"
         });
         if (resetError) {
           setErrorMsg('Error sending verification email: ' + resetError.message);
