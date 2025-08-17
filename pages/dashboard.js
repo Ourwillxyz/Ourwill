@@ -1,416 +1,107 @@
+// pages/dashboard.js
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../src/supabaseClient';
 
-// Responsive font scaler utility
-const scaleFont = (base, min, max, scale = 1) =>
-  `clamp(${min}px, ${base * scale}vw, ${max}px)`;
-
-// ✅ UPDATED: Insert voter on first login with full metadata
-const ensureVoterRecord = async (user) => {
-  if (!user) return null;
-
-  // Check if voter exists by email
-  const { data: existingVoter, error: voterError } = await supabase
-    .from('voter')
-    .select('*')
-    .eq('email', user.email)
-    .single();
-
-  if (!existingVoter) {
-    const metadata = user.user_metadata || {};
-
-    const { error: insertError, data: inserted } = await supabase
-      .from('voter')
-      .insert([
-        {
-          auth_user_id: user.id,
-          email: user.email,
-          username: metadata.username || user.email.split('@')[0],
-          mobile: metadata.mobile || '',
-          county: metadata.county || '',
-          subcounty: metadata.subcounty || '',
-          ward: metadata.ward || '',
-          polling_centre: metadata.polling_centre || '',
-          created_at: new Date().toISOString(),
-        },
-      ])
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Error inserting voter:', insertError);
-      return null;
-    }
-    return inserted;
-  } else {
-    return existingVoter;
-  }
-};
-
-// Helper to fetch a name given table, code column, name column, and value
-const fetchNameByCode = async (table, codeColumn, nameColumn, code) => {
-  if (!code) return '';
-  const { data, error } = await supabase
-    .from(table)
-    .select(nameColumn)
-    .eq(codeColumn, code)
-    .single();
-  return data ? data[nameColumn] : '';
-};
-
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [voter, setVoter] = useState(null);
-  const [locationNames, setLocationNames] = useState({
-    county: '',
-    subcounty: '',
-    ward: '',
-    polling_centre: '',
-  });
   const [ongoingPolls, setOngoingPolls] = useState([]);
   const [upcomingPolls, setUpcomingPolls] = useState([]);
   const [closedPolls, setClosedPolls] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch voter + location names
   useEffect(() => {
     const fetchAll = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+
       if (!user) {
-        router.replace('/login');
+        if (router.isReady) router.replace('/login');
         return;
       }
+
       setUser(user);
 
-      // Ensure voter record exists after magic link login
-      const voterRecord = await ensureVoterRecord(user);
-      setVoter(voterRecord);
+      // Insert voter if not exists
+      await supabase
+        .from('voters')
+        .upsert([{ email: user.email, user_id: user.id }], { onConflict: 'email' });
 
-      // Fetch location names for codes
-      if (voterRecord) {
-        const [county, subcounty, ward, polling_centre] = await Promise.all([
-          fetchNameByCode('counties', 'county_code', 'county_name', voterRecord.county),
-          fetchNameByCode('subcounties', 'subcounty_code', 'subcounty_name', voterRecord.subcounty),
-          fetchNameByCode('wards', 'ward_code', 'ward_name', voterRecord.ward),
-          fetchNameByCode('polling_centres', 'polling_centre_code', 'polling_centre_name', voterRecord.polling_centre),
-        ]);
-        setLocationNames({
-          county,
-          subcounty,
-          ward,
-          polling_centre,
-        });
-      }
-
-      // Fetch ongoing polls
-      const { data: ongoingData } = await supabase
+      // Fetch polls with error handling
+      const { data: ongoingData, error: ongoingError } = await supabase
         .from('polls')
         .select('*')
         .eq('status', 'ongoing');
+      if (ongoingError) console.error('Error fetching ongoing polls:', ongoingError);
       setOngoingPolls(ongoingData || []);
 
-      // Fetch upcoming polls
-      const { data: upcomingData } = await supabase
+      const { data: upcomingData, error: upcomingError } = await supabase
         .from('polls')
         .select('*')
         .eq('status', 'upcoming');
+      if (upcomingError) console.error('Error fetching upcoming polls:', upcomingError);
       setUpcomingPolls(upcomingData || []);
 
-      // Fetch closed polls
-      const { data: closedData } = await supabase
+      const { data: closedData, error: closedError } = await supabase
         .from('polls')
         .select('*')
         .eq('status', 'closed');
+      if (closedError) console.error('Error fetching closed polls:', closedError);
       setClosedPolls(closedData || []);
 
       setLoading(false);
     };
-    fetchAll();
-  }, [router]);
 
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: scaleFont(2.1, 22, 36, 1.1)
-      }}>
-        Loading dashboard...
-      </div>
-    );
-  }
+    if (router.isReady) fetchAll();
+  }, [router.isReady]);
 
-  if (!user) return null;
-
-  // Extract username from email
-  const username = user.email.split('@')[0];
-
-  // Cell base style for uniform size and scaling font
-  const cellStyle = {
-    background: '#fff',
-    borderRadius: '10px',
-    boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
-    padding: '1.5rem 1.2rem',
-    minHeight: 260,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    fontSize: scaleFont(1.25, 16, 22, 1.04),
-    width: '100%',
-    boxSizing: 'border-box'
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace('/login');
   };
 
-  // Helper components
-  const voterInfo = (
-    <div style={cellStyle}>
-      <h3 style={{ marginBottom: 12, fontSize: scaleFont(1.5, 20, 28, 1.1) }}>Voter Information</h3>
-      <div style={{ flex: 1 }}>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>Mobile:</strong> {voter?.mobile || <em>Not set</em>}</p>
-        <p><strong>Username:</strong> {voter?.username || username}</p>
-        <p><strong>County:</strong> {locationNames.county || <em>Not set</em>}</p>
-        <p><strong>Subcounty:</strong> {locationNames.subcounty || <em>Not set</em>}</p>
-        <p><strong>Ward:</strong> {locationNames.ward || <em>Not set</em>}</p>
-        <p><strong>Polling Centre:</strong> {locationNames.polling_centre || <em>Not set</em>}</p>
-      </div>
-      <button
-        style={{
-          marginTop: 14,
-          padding: '0.8rem 1.1rem',
-          background: '#4f46e5',
-          color: '#fff',
-          borderRadius: '7px',
-          border: 'none',
-          fontWeight: '500',
-          fontSize: scaleFont(1.1, 15, 20, 1.01),
-          cursor: 'pointer',
-          alignSelf: 'flex-start'
-        }}
-        onClick={() => router.push('/update-profile')}
-      >
-        Update Profile
-      </button>
-    </div>
-  );
-
-  const pollingCTA = (
-    <div style={cellStyle}>
-      <h3 style={{ marginBottom: 12, fontSize: scaleFont(1.5, 20, 28, 1.1) }}>Ready to Vote?</h3>
-      <div style={{ flex: 1 }}>
-        <p>
-          <strong>Your voice matters!</strong><br />
-          Participate in ongoing polls and make a difference.<br />
-          <span style={{ color: '#4f46e5', fontWeight: 500 }}>
-            Vote based on your values and vision, not monetary gain.
-          </span>
-        </p>
-      </div>
-      <button
-        style={{
-          marginTop: 14,
-          padding: '0.8rem 1.2rem',
-          background: '#16a34a',
-          color: '#fff',
-          borderRadius: '7px',
-          border: 'none',
-          fontWeight: '500',
-          fontSize: scaleFont(1.1, 15, 20, 1.01),
-          cursor: 'pointer',
-          alignSelf: 'flex-start'
-        }}
-        onClick={() => router.push('/polls')}
-      >
-        Go to Polls
-      </button>
-    </div>
-  );
-
-  const closedPollsSection = (
-    <div style={cellStyle}>
-      <h3 style={{ marginBottom: 12, fontSize: scaleFont(1.4, 19, 27, 1.05) }}>Closed Polls</h3>
-      <div style={{ flex: 1 }}>
-        {closedPolls.length === 0 ? (
-          <p>No closed polls yet.</p>
-        ) : (
-          <ul>
-            {closedPolls.map(poll => (
-              <li key={poll.id} style={{ marginBottom: 10 }}>
-                <strong>{poll.title}</strong>
-                <br />
-                {poll.description}
-                <br />
-                <span style={{ fontSize: scaleFont(1, 14, 18, 1.01), color: '#555' }}>
-                  Ended: {poll.end_date ? new Date(poll.end_date).toLocaleString() : 'TBD'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-
-  const upcomingPollsSection = (
-    <div style={cellStyle}>
-      <h3 style={{ marginBottom: 12, fontSize: scaleFont(1.4, 19, 27, 1.05) }}>Upcoming Polls</h3>
-      <div style={{ flex: 1 }}>
-        {upcomingPolls.length === 0 ? (
-          <p>No upcoming polls scheduled.</p>
-        ) : (
-          <ul>
-            {upcomingPolls.map(poll => (
-              <li key={poll.id} style={{ marginBottom: 10 }}>
-                <strong>{poll.title}</strong>
-                <br />
-                {poll.description}
-                <br />
-                <span style={{ fontSize: scaleFont(1, 14, 18, 1.01), color: '#555' }}>
-                  Starts: {poll.start_date ? new Date(poll.start_date).toLocaleString() : 'TBD'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
+  if (loading) return <p>Loading dashboard...</p>;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      width: '100vw',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 0,
-        backgroundImage: 'url("/kenya-flag.jpg")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        opacity: 0.17,
-        pointerEvents: 'none'
-      }} />
+    <div>
+      <h1>Welcome, {user?.email}</h1>
+      <button onClick={handleLogout}>Logout</button>
 
-      <div style={{
-        position: 'relative',
-        zIndex: 1,
-        minHeight: '100vh',
-        width: '100vw',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center'
-      }}>
-        <div style={{
-          width: '100%',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          flexDirection: 'column',
-          marginBottom: '2rem',
-          position: 'relative'
-        }}>
-          <img src="/ourwill-logo.png" alt="Logo" style={{
-            width: '170px',
-            maxWidth: '23vw',
-            background: '#fff',
-            borderRadius: '15px',
-            boxShadow: '0 0 16px rgba(0,0,0,0.08)',
-            zIndex: 1,
-            padding: '0.7rem',
-            marginBottom: '0.7rem',
-            display: 'block'
-          }} />
-        </div>
+      <h2>Ongoing Polls</h2>
+      {ongoingPolls.length > 0 ? (
+        ongoingPolls.map((poll) => (
+          <div key={poll.id}>
+            <h3>{poll.title}</h3>
+            <p>{poll.description}</p>
+          </div>
+        ))
+      ) : (
+        <p>No ongoing polls</p>
+      )}
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
-          gap: '2.1rem',
-          width: '100%',
-          maxWidth: 1040,
-          margin: '0 auto',
-          marginBottom: '2.5rem'
-        }}>
-          <div>{voterInfo}</div>
-          <div>{pollingCTA}</div>
-          <div>{closedPollsSection}</div>
-          <div>{upcomingPollsSection}</div>
-        </div>
+      <h2>Upcoming Polls</h2>
+      {upcomingPolls.length > 0 ? (
+        upcomingPolls.map((poll) => (
+          <div key={poll.id}>
+            <h3>{poll.title}</h3>
+            <p>{poll.description}</p>
+          </div>
+        ))
+      ) : (
+        <p>No upcoming polls</p>
+      )}
 
-        <div style={{
-          width: '100%',
-          maxWidth: 700,
-          background: '#fff',
-          padding: '1.3rem 1rem',
-          borderRadius: '10px',
-          boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
-          marginBottom: '2rem',
-          textAlign: 'center',
-          fontSize: scaleFont(1.2, 15, 21, 1.01)
-        }}>
-          <h3 style={{ fontSize: scaleFont(1.5, 19, 29, 1.1) }}>Ongoing Poll</h3>
-          {ongoingPolls.length === 0 ? (
-            <p>No ongoing polls at the moment.</p>
-          ) : (
-            ongoingPolls.map(poll => (
-              <div key={poll.id} style={{ marginBottom: 12 }}>
-                <strong>{poll.title}</strong>
-                <br />
-                {poll.description}
-                <br />
-                <span style={{ fontSize: scaleFont(1, 13, 17, 1.01), color: '#555' }}>
-                  Ends: {poll.end_date ? new Date(poll.end_date).toLocaleString() : 'TBD'}
-                </span>
-                <br />
-                <button
-                  style={{
-                    marginTop: 10,
-                    padding: '0.8rem 1.1rem',
-                    background: '#4f46e5',
-                    color: '#fff',
-                    borderRadius: '7px',
-                    border: 'none',
-                    fontWeight: '500',
-                    fontSize: scaleFont(1.05, 14, 19, 1.01),
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => router.push(`/polls/${poll.id}`)}
-                >
-                  Vote Now
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <button
-            style={{
-              background: '#ef4444',
-              color: '#fff',
-              padding: '0.7rem 1.2rem',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: scaleFont(1.05, 14, 19, 1.01),
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-            onClick={async () => {
-              await supabase.auth.signOut();
-              router.push('/login');
-            }}
-          >
-            Log Out
-          </button>
-        </div>
-      </div>
+      <h2>Closed Polls</h2>
+      {closedPolls.length > 0 ? (
+        closedPolls.map((poll) => (
+          <div key={poll.id}>
+            <h3>{poll.title}</h3>
+            <p>{poll.description}</p>
+          </div>
+        ))
+      ) : (
+        <p>No closed polls</p>
+      )}
     </div>
   );
 }
