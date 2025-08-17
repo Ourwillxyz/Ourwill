@@ -17,7 +17,7 @@ export default function TrialEmailSignUp() {
     const { error } = await supabase.auth.signUp({
       email,
       password
-      // options removed!
+      // options: {} <-- leave out or keep empty
     });
     if (error) {
       setMessage(error.message);
