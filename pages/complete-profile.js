@@ -15,6 +15,8 @@ export default function CompleteProfile() {
     subcounty_code: '',
     ward_code: '',
     polling_centre_code: '',
+    password: '',
+    confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -102,7 +104,24 @@ export default function CompleteProfile() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Check for duplicate mobile in profiles (optional, comment out if not needed)
+    if (formData.password !== formData.confirmPassword) {
+      setErrorMsg('Passwords do not match.');
+      setLoading(false);
+      return;
+    }
+
+    // update Supabase auth password
+    const { error: passError } = await supabase.auth.updateUser({
+      password: formData.password,
+    });
+
+    if (passError) {
+      setErrorMsg('Failed to set password: ' + passError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Check for duplicate mobile in profiles
     const { data: existingMobile } = await supabase
       .from('profiles')
       .select('id')
@@ -128,7 +147,7 @@ export default function CompleteProfile() {
       return;
     }
 
-    // Insert profile using Auth user.id as PK
+    // Insert profile
     const { error } = await supabase
       .from('profiles')
       .insert([{
@@ -222,6 +241,28 @@ export default function CompleteProfile() {
             onChange={handleChange}
             style={dropdownStyle}
           />
+          {/* Password fields */}
+          <input
+            id="password"
+            name="password"
+            type="password"
+            placeholder="Password"
+            required
+            value={formData.password}
+            onChange={handleChange}
+            style={dropdownStyle}
+          />
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            placeholder="Confirm Password"
+            required
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            style={dropdownStyle}
+          />
+          {/* Dropdowns remain unchanged */}
           <select id="county_code" name="county_code" required value={formData.county_code} onChange={handleChange} style={dropdownStyle}>
             <option value="">Select County</option>
             {counties.map((c) => (
