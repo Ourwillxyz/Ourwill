@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import supabase from '../src/supabaseClient'; // If you have your supabaseClient configured, you can use this instead
-
-// If you don't have supabaseClient.js already set up, uncomment and use below:
-// const supabase = createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
+import supabase from '../src/supabaseClient';
 
 export default function RegisterUser() {
   const [mode, setMode] = useState('register');
@@ -133,12 +129,6 @@ export default function RegisterUser() {
     }
   }
 
-  // Helper to extract username from email
-  function getUsernameFromEmail(email) {
-    if (!email) return '';
-    return email.split('@')[0];
-  }
-
   async function handleSubmit(e) {
     e.preventDefault();
     setErrorMsg('');
@@ -193,14 +183,24 @@ export default function RegisterUser() {
             subcounty_code: form.subcounty_code,
             ward_code: form.ward_code,
             polling_centre_code: form.polling_centre_code,
-            // You can add more fields here if your table supports them
           }]);
         if (profileError) {
           setErrorMsg('Registration failed while saving profile: ' + profileError.message);
           setLoading(false);
           return;
         }
-        setSuccessMsg('Registration successful! Please check your email for a verification link.');
+
+        // Send password reset for email verification
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email, {
+          redirectTo: 'https://your-app-url.com/confirm', // Replace with your real confirmation URL
+        });
+        if (resetError) {
+          setErrorMsg('Error sending verification email: ' + resetError.message);
+          setLoading(false);
+          return;
+        }
+
+        setSuccessMsg('Registration successful! Please check your email to confirm and set your password.');
       } else {
         // Login with Supabase Auth
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -397,7 +397,7 @@ export default function RegisterUser() {
         {mode === 'register' && (
           <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
             <p>
-              <strong>Note:</strong> After registering, please check your email or mobile for a verification message.
+              <strong>Note:</strong> After registering, please check your email for a confirmation link and set your password.
             </p>
           </div>
         )}
