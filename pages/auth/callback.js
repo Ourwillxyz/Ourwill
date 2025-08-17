@@ -1,19 +1,18 @@
 // pages/auth/callback.js
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import { supabase } from "../../supabaseClient";
+import { supabase } from "../../src/supabaseClient";
 
 export default function Callback() {
   const router = useRouter();
 
   useEffect(() => {
     const handleAuth = async () => {
-      // Get the session from Supabase
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error) {
         console.error("Error getting session:", error.message);
-        router.push("/login"); // fallback
+        router.push("/login");
         return;
       }
 
@@ -22,7 +21,6 @@ export default function Callback() {
         return;
       }
 
-      // Get the logged-in user
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
@@ -30,15 +28,12 @@ export default function Callback() {
         return;
       }
 
-      // Check if the user has a password set
-      // Supabase stores identities (OAuth, email, etc.)
+      // Check if user has a password set (email provider means password login enabled)
       const hasPassword = user.app_metadata?.provider === "email";
 
       if (!hasPassword) {
-        // If no password, send to set-password page
         router.push("/set-password");
       } else {
-        // Otherwise send to dashboard
         router.push("/dashboard");
       }
     };
