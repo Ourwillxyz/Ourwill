@@ -195,12 +195,12 @@ export default function RegisterUser() {
           redirectTo: 'https://ourwill.vercel.app', // Use your main site URL, not "/login"
         });
         if (resetError) {
-          setErrorMsg('Error sending verification email: ' + resetError.message);
+          setErrorMsg('Error sending password setup email: ' + resetError.message);
           setLoading(false);
           return;
         }
 
-        setSuccessMsg('Registration successful! Please check your email to confirm and set your password.');
+        setSuccessMsg('Registration successful! Please check your email for a link to set your password before logging in.');
       } else {
         // Login with Supabase Auth
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -397,7 +397,7 @@ export default function RegisterUser() {
         {mode === 'register' && (
           <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
             <p>
-              <strong>Note:</strong> After registering, please check your email for a confirmation link and set your password.
+              <strong>Note:</strong> After registering, please check your email for a link to set your password before logging in.
             </p>
           </div>
         )}
