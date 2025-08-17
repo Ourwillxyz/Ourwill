@@ -9,7 +9,6 @@ export default function Callback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Supabase parses URL fragment automatically
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -19,10 +18,21 @@ export default function Callback() {
         }
 
         if (data?.session) {
-          // User is authenticated 🎉
-          router.replace("/dashboard");
+          const user = data.session.user;
+
+          // Check if the user has a password (Supabase does not return this directly)
+          // Simple workaround: look at user.app_metadata or user.identities
+          const hasPassword = user?.identities?.some(
+            (id) => id.provider === "email" && id.identity_data?.password
+          );
+
+          if (!hasPassword) {
+            // Redirect to password setup if user logged in via magic link or oauth
+            router.replace("/set-password");
+          } else {
+            router.replace("/dashboard");
+          }
         } else {
-          // If session not yet available, try exchange
           const { data: hashData, error: hashError } =
             await supabase.auth.exchangeCodeForSession(window.location.href);
 
@@ -30,7 +40,7 @@ export default function Callback() {
             console.error("Exchange error:", hashError);
             router.replace("/login?error=auth");
           } else {
-            router.replace("/dashboard");
+            router.replace("/set-password");
           }
         }
       } catch (err) {
