@@ -138,7 +138,6 @@ export default function RegisterUser() {
 
     // Validation
     if (mode === 'register') {
-      // Only check for required fields except password
       for (const key of ['email', 'mobile', 'county_code', 'subcounty_code', 'ward_code', 'polling_centre_code']) {
         if (!form[key]) {
           setErrorMsg('Please fill all fields.');
@@ -152,7 +151,6 @@ export default function RegisterUser() {
         return;
       }
     } else {
-      // For login, check email and password
       if (!form.email || !form.password) {
         setErrorMsg('Enter email and password.');
         setLoading(false);
@@ -175,12 +173,16 @@ export default function RegisterUser() {
           email: form.email,
           password: randomPassword,
         });
+
+        // Check for sign up error
         if (signUpError) {
           setErrorMsg(signUpError.message);
           setLoading(false);
           return;
         }
-        const userId = signUpData.user?.id;
+
+        // Check user id
+        const userId = signUpData?.user?.id;
         if (!userId) {
           setErrorMsg('Could not retrieve user ID after sign up.');
           setLoading(false);
@@ -198,17 +200,18 @@ export default function RegisterUser() {
             ward_code: form.ward_code,
             polling_centre_code: form.polling_centre_code,
           }]);
+
         if (profileError) {
           setErrorMsg('Registration failed while saving profile: ' + profileError.message);
           setLoading(false);
           return;
         }
 
-        // Send password reset for email setup
-        // IMPORTANT: The redirectTo URL should point to a password reset page in your app!
+        // Send password reset (recovery) email
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email, {
-          redirectTo: 'https://ourwill.vercel.app/reset-password', // <-- must match your password reset page!
+          redirectTo: 'https://ourwill.vercel.app/reset-password',
         });
+
         if (resetError) {
           setErrorMsg('Error sending password setup email: ' + resetError.message);
           setLoading(false);
