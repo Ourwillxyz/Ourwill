@@ -6,32 +6,30 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-export default function TrialEmailSignUp() {
+export default function TrialMagicLinkSignUp() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleSignup = async (e) => {
+  const handleMagicLink = async (e) => {
     e.preventDefault();
     setMessage("");
-    const { error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password
-      // options: {} <-- leave out or keep empty
+      options: { shouldCreateUser: true }
     });
     if (error) {
       setMessage(error.message);
     } else {
       setMessage(
-        "Registration successful! Please check your email for a link to confirm your account."
+        "Check your email for a magic link to sign in instantly!"
       );
     }
   };
 
   return (
     <div style={{ maxWidth: 400, margin: "2rem auto", border: "1px solid #eee", padding: "2rem", borderRadius: 8 }}>
-      <h2>Trial Email Confirmation Signup</h2>
-      <form onSubmit={handleSignup}>
+      <h2>Try Our App Instantly</h2>
+      <form onSubmit={handleMagicLink}>
         <label htmlFor="email">Email</label>
         <input
           id="email"
@@ -42,18 +40,8 @@ export default function TrialEmailSignUp() {
           placeholder="Enter your email"
           style={{ width: "100%", marginBottom: 12, padding: 8 }}
         />
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          required
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          placeholder="Choose a password"
-          style={{ width: "100%", marginBottom: 12, padding: 8 }}
-        />
         <button type="submit" style={{ width: "100%", padding: 10 }}>
-          Sign Up & Confirm Email
+          Get Magic Link
         </button>
       </form>
       <p style={{ marginTop: 16, color: "#0070f3" }}>{message}</p>
