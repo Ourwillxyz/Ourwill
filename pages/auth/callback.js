@@ -12,17 +12,14 @@ export default function Callback() {
 
         if (error) {
           console.error("Error fetching user:", error.message);
+          // Only go back to signup if no user exists at all
           router.replace("/trial-email-signup");
           return;
         }
 
-        if (user) {
-          // Check if password is set (new users will have null password hash)
-          // Supabase does not expose password hash directly, so assume new users go to set-password
-          router.replace("/set-password");
-        } else {
-          router.replace("/trial-email-signup");
-        }
+        // ✅ Always redirect to set-password for magic-link users
+        router.replace("/set-password");
+
       } catch (err) {
         console.error("Unexpected callback error:", err);
         router.replace("/trial-email-signup");
