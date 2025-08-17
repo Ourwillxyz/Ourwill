@@ -1,61 +1,64 @@
-import { useState } from 'react'
-import { supabase } from '../supabaseClient'
-import { useRouter } from 'next/router'
+// pages/login.js
+import { useState } from "react";
+import { useRouter } from "next/router";
+import { supabase } from "../src/supabaseClient";
 
-export default function Login() {
-  const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const router = useRouter()
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    try {
-      // Send magic link for login
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`, // user comes back here
-        },
-      })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) throw error
+    setLoading(false);
 
-      setMessage('Check your email for the login link!')
-    } catch (error) {
-      console.error(error)
-      setMessage(error.message)
-    } finally {
-      setLoading(false)
+    if (error) {
+      setError(error.message);
+    } else {
+      // Redirect after login
+      router.push("/dashboard");
     }
-  }
+  };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
-        <form onSubmit={handleLogin} className="space-y-4">
+    <div style={{ maxWidth: "400px", margin: "50px auto" }}>
+      <h1>Login</h1>
+      <form onSubmit={handleLogin}>
+        <div style={{ marginBottom: "10px" }}>
+          <label>Email</label>
           <input
             type="email"
-            placeholder="Your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg"
             required
+            style={{ width: "100%", padding: "8px" }}
           />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            {loading ? 'Sending link...' : 'Send Magic Link'}
-          </button>
-        </form>
-        {message && <p className="mt-4 text-center text-gray-700">{message}</p>}
-      </div>
+        </div>
+        <div style={{ marginBottom: "10px" }}>
+          <label>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={{ width: "100%", padding: "8px" }}
+          />
+        </div>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <button type="submit" disabled={loading} style={{ padding: "10px", width: "100%" }}>
+          {loading ? "Logging in..." : "Login"}
+        </button>
+      </form>
     </div>
-  )
+  );
 }
