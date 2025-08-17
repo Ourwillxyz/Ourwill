@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid'; // Install via: npm install uuid
+import { v4 as uuidv4 } from 'uuid'; // Make sure to run: npm install uuid
 import supabase from '../src/supabaseClient';
 
 export default function RegisterUser() {
