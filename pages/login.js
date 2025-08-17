@@ -9,6 +9,11 @@ export default function Login() {
   const [msg, setMsg] = useState('');
   const [showProfileForm, setShowProfileForm] = useState(false);
 
+  // Password reset states
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMsg, setResetMsg] = useState('');
+
   // Dropdown data
   const [counties, setCounties] = useState([]);
   const [subcounties, setSubcounties] = useState([]);
@@ -41,6 +46,20 @@ export default function Login() {
       // Auth state will be updated, so the profile check useEffect will run
     }
     setLoading(false);
+  };
+
+  // Password reset handler
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setResetMsg('');
+    if (!resetEmail.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
+      setResetMsg('Enter a valid email.');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: 'https://ourwill.vercel.app', // Use your actual site
+    });
+    setResetMsg(error ? error.message : 'Password reset link sent! Please check your email.');
   };
 
   // Handle dropdown dependencies for Complete Profile
@@ -333,78 +352,156 @@ export default function Login() {
           }}>
             Login to OurWill
           </h2>
-          <form onSubmit={handleLogin}>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="Enter your email address"
-              required
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                marginBottom: 16,
-                borderRadius: 8,
-                border: '1px solid #d1d5db',
-                fontSize: '1rem',
-                background: '#f7f7fa'
-              }}
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                marginBottom: 16,
-                borderRadius: 8,
-                border: '1px solid #d1d5db',
-                fontSize: '1rem',
-                background: '#f7f7fa'
-              }}
-            />
-            <button
-              type="submit"
-              disabled={loading || !email || !password}
-              style={{
-                width: '100%',
-                padding: '12px 0',
-                borderRadius: 8,
-                border: 'none',
-                background: loading ? '#a5b4fc' : '#4f46e5',
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: '1rem',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'background 0.2s'
-              }}
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </button>
-            {msg && (
-              <div
+          {/* Toggle between login and reset form */}
+          {!showReset ? (
+            <form onSubmit={handleLogin}>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Enter your email address"
+                required
+                disabled={loading}
                 style={{
-                  marginTop: 16,
-                  color: msg.startsWith('Error') ? '#dc2626' : '#4f46e5',
-                  fontWeight: 500
+                  width: '100%',
+                  padding: '12px 16px',
+                  marginBottom: 16,
+                  borderRadius: 8,
+                  border: '1px solid #d1d5db',
+                  fontSize: '1rem',
+                  background: '#f7f7fa'
                 }}
-                dangerouslySetInnerHTML={{ __html: msg }}
               />
-            )}
-            <div style={{ marginTop: 24, color: '#555', fontSize: '0.97em', lineHeight: 1.5 }}>
-              <p>
-                <strong>Note:</strong> Login with your registered email and password.
-              </p>
-              <p>
-                <strong>Forgot your password?</strong> Reset it from the registration page.
-              </p>
-            </div>
-          </form>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  marginBottom: 16,
+                  borderRadius: 8,
+                  border: '1px solid #d1d5db',
+                  fontSize: '1rem',
+                  background: '#f7f7fa'
+                }}
+              />
+              <button
+                type="submit"
+                disabled={loading || !email || !password}
+                style={{
+                  width: '100%',
+                  padding: '12px 0',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: loading ? '#a5b4fc' : '#4f46e5',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+              {msg && (
+                <div
+                  style={{
+                    marginTop: 16,
+                    color: msg.startsWith('Error') ? '#dc2626' : '#4f46e5',
+                    fontWeight: 500
+                  }}
+                  dangerouslySetInnerHTML={{ __html: msg }}
+                />
+              )}
+              <div style={{ marginTop: 24, color: '#555', fontSize: '0.97em', lineHeight: 1.5 }}>
+                <p>
+                  <strong>Note:</strong> Login with your registered email and password.
+                </p>
+                <p>
+                  <button
+                    type="button"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#4f46e5',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      padding: 0,
+                      fontSize: 'inherit'
+                    }}
+                    onClick={() => {
+                      setShowReset(true);
+                      setResetEmail('');
+                      setResetMsg('');
+                    }}
+                  >
+                    Forgot your password? Reset it here.
+                  </button>
+                </p>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handlePasswordReset}>
+              <h3 style={{ color: '#4733a8', marginBottom: 12 }}>Reset Password</h3>
+              <input
+                type="email"
+                value={resetEmail}
+                onChange={e => setResetEmail(e.target.value)}
+                placeholder="Enter your email address"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  marginBottom: 16,
+                  borderRadius: 8,
+                  border: '1px solid #d1d5db',
+                  fontSize: '1rem',
+                  background: '#f7f7fa'
+                }}
+              />
+              <button
+                type="submit"
+                style={{
+                  width: '100%',
+                  padding: '12px 0',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#4f46e5',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Send Reset Link
+              </button>
+              {resetMsg && (
+                <div style={{ marginTop: 16, color: resetMsg.startsWith('Password reset link sent') ? '#22c55e' : '#dc2626', fontWeight: 500 }}>
+                  {resetMsg}
+                </div>
+              )}
+              <button
+                type="button"
+                style={{
+                  marginTop: 12,
+                  background: 'none',
+                  border: 'none',
+                  color: '#4f46e5',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  fontSize: 'inherit'
+                }}
+                onClick={() => setShowReset(false)}
+              >
+                Back to Login
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>
