@@ -11,7 +11,7 @@ export default function Callback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Get current user from Supabase auth
+        // Get current authenticated user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError) throw userError;
 
@@ -21,23 +21,23 @@ export default function Callback() {
           return;
         }
 
-        // Check if user exists in profiles table
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
+        // Check if user exists in voter table (you can adjust table name)
+        const { data: voterData, error: voterError } = await supabase
+          .from('voter')
           .select('*')
-          .eq('id', user.id)
+          .eq('email', user.email)
           .single();
 
-        if (profileError && profileError.code !== 'PGRST116') {
+        if (voterError && voterError.code !== 'PGRST116') {
           // Any error other than "no rows found"
-          throw profileError;
+          throw voterError;
         }
 
-        if (!profileData) {
-          // Profile not yet created, redirect to set-password.js
+        if (!voterData) {
+          // User not in voter table, redirect to set-password.js anyway
           router.push('/set-password');
         } else {
-          // Profile exists, redirect to dashboard
+          // User exists in voter table, redirect to dashboard
           router.push('/dashboard');
         }
       } catch (error) {
