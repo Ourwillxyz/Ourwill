@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid'; // Make sure to run: npm install uuid
+import { v4 as uuidv4 } from 'uuid';
 import supabase from '../src/supabaseClient';
 
 export default function RegisterUser() {
@@ -205,8 +205,9 @@ export default function RegisterUser() {
         }
 
         // Send password reset for email setup
+        // IMPORTANT: The redirectTo URL should point to a password reset page in your app!
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email, {
-          redirectTo: 'https://ourwill.vercel.app', // Use your main site URL
+          redirectTo: 'https://ourwill.vercel.app/reset-password', // <-- must match your password reset page!
         });
         if (resetError) {
           setErrorMsg('Error sending password setup email: ' + resetError.message);
