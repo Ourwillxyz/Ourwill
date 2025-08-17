@@ -1,42 +1,33 @@
 // pages/auth/callback.js
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import { supabase } from "../../src/supabaseClient"; // ✅ fixed import
-import { Card, CardContent } from "../../components/ui/card"; // ✅ relative import
-import { Button } from "../../components/ui/button"; // ✅ relative import
+import { supabase } from "../../supabaseClient";
 
 export default function Callback() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleAuth = async () => {
+    const handleCallback = async () => {
       const { data, error } = await supabase.auth.getSession();
 
       if (error) {
-        console.error("Error fetching session:", error.message);
+        console.error("Error getting session:", error.message);
         return;
       }
 
       if (data?.session) {
-        // Redirect to set password
+        // Redirect to set password page
         router.push("/set-password");
       }
     };
 
-    handleAuth();
+    handleCallback();
   }, [router]);
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md shadow-lg rounded-2xl">
-        <CardContent className="p-6 text-center">
-          <h2 className="text-xl font-bold mb-4">Verifying login...</h2>
-          <p className="text-gray-600 mb-6">
-            Please wait while we confirm your authentication.
-          </p>
-          <Button disabled>Processing...</Button>
-        </CardContent>
-      </Card>
+    <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
+      <h2>Verifying login...</h2>
+      <p>Please wait while we confirm your email.</p>
     </div>
   );
 }
