@@ -1,49 +1,40 @@
 // pages/auth/callback.js
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/router";
-import { supabase } from "../../src/supabaseClient";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { supabase } from "../../src/supabaseClient"; // ✅ fixed import
+import { Card, CardContent } from "../../components/ui/card"; // ✅ relative import
+import { Button } from "../../components/ui/button"; // ✅ relative import
 
 export default function Callback() {
-  const [status, setStatus] = useState("Verifying login...");
   const router = useRouter();
 
   useEffect(() => {
-    const handleSession = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
+    const handleAuth = async () => {
+      const { data, error } = await supabase.auth.getSession();
 
-        if (error) {
-          setStatus("Verification failed. Please try again.");
-          console.error(error);
-          return;
-        }
+      if (error) {
+        console.error("Error fetching session:", error.message);
+        return;
+      }
 
-        if (data?.session) {
-          // If user just signed up with magic link → force them to set password
-          router.replace("/set-password");
-        } else {
-          setStatus("No active session found. Please try again.");
-        }
-      } catch (err) {
-        console.error(err);
-        setStatus("Unexpected error occurred.");
+      if (data?.session) {
+        // Redirect to set password
+        router.push("/set-password");
       }
     };
 
-    handleSession();
+    handleAuth();
   }, [router]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="flex h-screen items-center justify-center bg-gray-50">
+      <Card className="w-full max-w-md shadow-lg rounded-2xl">
         <CardContent className="p-6 text-center">
-          <h1 className="text-xl font-semibold mb-4">Authentication</h1>
-          <p className="text-gray-600 mb-6">{status}</p>
-          {status.includes("failed") || status.includes("No active session") ? (
-            <Button onClick={() => router.push("/login")}>Go to Login</Button>
-          ) : null}
+          <h2 className="text-xl font-bold mb-4">Verifying login...</h2>
+          <p className="text-gray-600 mb-6">
+            Please wait while we confirm your authentication.
+          </p>
+          <Button disabled>Processing...</Button>
         </CardContent>
       </Card>
     </div>
