@@ -7,18 +7,24 @@ export default function Callback() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const { data, error } = await supabase.auth.getSession();
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
 
-      if (error) {
-        console.error("Error confirming user:", error.message);
-        return;
-      }
+        if (error) {
+          console.error("Error fetching user:", error.message);
+          router.replace("/trial-email-signup");
+          return;
+        }
 
-      if (data?.session) {
-        // ✅ Redirect straight to set-password.js
-        router.replace("/set-password");
-      } else {
-        // If no session, fallback to trial-email-signup
+        if (user) {
+          // Check if password is set (new users will have null password hash)
+          // Supabase does not expose password hash directly, so assume new users go to set-password
+          router.replace("/set-password");
+        } else {
+          router.replace("/trial-email-signup");
+        }
+      } catch (err) {
+        console.error("Unexpected callback error:", err);
         router.replace("/trial-email-signup");
       }
     };
@@ -27,7 +33,7 @@ export default function Callback() {
   }, [router]);
 
   return (
-    <p className="text-center text-lg font-medium">
+    <p style={{ textAlign: "center", marginTop: 60, fontSize: 18 }}>
       Finishing login... please wait.
     </p>
   );
