@@ -135,31 +135,40 @@ export default function RegisterUser() {
     setSuccessMsg('');
     setLoading(true);
 
-    // Basic validation
-    for (const key in form) {
-      if (!form[key]) {
-        setErrorMsg('Please fill all fields.');
+    // Validation
+    if (mode === 'register') {
+      // Only check for required fields except password
+      for (const key of ['email', 'mobile', 'county_code', 'subcounty_code', 'ward_code', 'polling_centre_code']) {
+        if (!form[key]) {
+          setErrorMsg('Please fill all fields.');
+          setLoading(false);
+          return;
+        }
+      }
+      if (!form.email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
+        setErrorMsg('Enter a valid email.');
+        setLoading(false);
+        return;
+      }
+    } else {
+      // For login, check email and password
+      if (!form.email || !form.password) {
+        setErrorMsg('Enter email and password.');
+        setLoading(false);
+        return;
+      }
+      if (!form.email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
+        setErrorMsg('Enter a valid email.');
         setLoading(false);
         return;
       }
     }
-    if (!form.email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
-      setErrorMsg('Enter a valid email.');
-      setLoading(false);
-      return;
-    }
-    if (form.password.length < 6) {
-      setErrorMsg('Password should be at least 6 characters.');
-      setLoading(false);
-      return;
-    }
 
     try {
       if (mode === 'register') {
-        // Register user with Supabase Auth
+        // Register user with Supabase Auth (no password)
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: form.email,
-          password: form.password,
         });
         if (signUpError) {
           setErrorMsg(signUpError.message);
@@ -190,9 +199,9 @@ export default function RegisterUser() {
           return;
         }
 
-        // Send password reset for email verification (using your main site as redirect)
+        // Send password reset for email setup
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email, {
-          redirectTo: 'https://ourwill.vercel.app', // Use your main site URL, not "/login"
+          redirectTo: 'https://ourwill.vercel.app', // Use your main site URL
         });
         if (resetError) {
           setErrorMsg('Error sending password setup email: ' + resetError.message);
@@ -293,78 +302,84 @@ export default function RegisterUser() {
             required
             style={dropdownStyle}
           />
-          <input
-            name="mobile"
-            placeholder="Mobile"
-            value={form.mobile}
-            onChange={handleChange}
-            required
-            style={dropdownStyle}
-          />
-          {/* County Dropdown */}
-          <select
-            name="county_code"
-            value={form.county_code}
-            onChange={handleChange}
-            required
-            style={dropdownStyle}
-          >
-            <option value="">Select County</option>
-            {counties.map(c => (
-              <option key={c.county_code} value={c.county_code}>{c.county_name}</option>
-            ))}
-          </select>
-          {/* Subcounty Dropdown */}
-          <select
-            name="subcounty_code"
-            value={form.subcounty_code}
-            onChange={handleChange}
-            required
-            style={dropdownStyle}
-            disabled={!form.county_code || subcounties.length === 0}
-          >
-            <option value="">Select Subcounty</option>
-            {subcounties.map(sc => (
-              <option key={sc.subcounty_code} value={sc.subcounty_code}>{sc.subcounty_name}</option>
-            ))}
-          </select>
-          {/* Ward Dropdown */}
-          <select
-            name="ward_code"
-            value={form.ward_code}
-            onChange={handleChange}
-            required
-            style={dropdownStyle}
-            disabled={!form.subcounty_code || wards.length === 0}
-          >
-            <option value="">Select Ward</option>
-            {wards.map(w => (
-              <option key={w.ward_code} value={w.ward_code}>{w.ward_name}</option>
-            ))}
-          </select>
-          {/* Polling Centre Dropdown */}
-          <select
-            name="polling_centre_code"
-            value={form.polling_centre_code}
-            onChange={handleChange}
-            required
-            style={dropdownStyle}
-            disabled={!form.ward_code || pollingCentres.length === 0}
-          >
-            <option value="">Select Polling Centre</option>
-            {pollingCentres.map(pc => (
-              <option key={pc.polling_centre_code} value={pc.polling_centre_code}>{pc.polling_centre_name}</option>
-            ))}
-          </select>
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            style={dropdownStyle}
-          />
+          {mode === 'register' && (
+            <>
+              <input
+                name="mobile"
+                placeholder="Mobile"
+                value={form.mobile}
+                onChange={handleChange}
+                required
+                style={dropdownStyle}
+              />
+              {/* County Dropdown */}
+              <select
+                name="county_code"
+                value={form.county_code}
+                onChange={handleChange}
+                required
+                style={dropdownStyle}
+              >
+                <option value="">Select County</option>
+                {counties.map(c => (
+                  <option key={c.county_code} value={c.county_code}>{c.county_name}</option>
+                ))}
+              </select>
+              {/* Subcounty Dropdown */}
+              <select
+                name="subcounty_code"
+                value={form.subcounty_code}
+                onChange={handleChange}
+                required
+                style={dropdownStyle}
+                disabled={!form.county_code || subcounties.length === 0}
+              >
+                <option value="">Select Subcounty</option>
+                {subcounties.map(sc => (
+                  <option key={sc.subcounty_code} value={sc.subcounty_code}>{sc.subcounty_name}</option>
+                ))}
+              </select>
+              {/* Ward Dropdown */}
+              <select
+                name="ward_code"
+                value={form.ward_code}
+                onChange={handleChange}
+                required
+                style={dropdownStyle}
+                disabled={!form.subcounty_code || wards.length === 0}
+              >
+                <option value="">Select Ward</option>
+                {wards.map(w => (
+                  <option key={w.ward_code} value={w.ward_code}>{w.ward_name}</option>
+                ))}
+              </select>
+              {/* Polling Centre Dropdown */}
+              <select
+                name="polling_centre_code"
+                value={form.polling_centre_code}
+                onChange={handleChange}
+                required
+                style={dropdownStyle}
+                disabled={!form.ward_code || pollingCentres.length === 0}
+              >
+                <option value="">Select Polling Centre</option>
+                {pollingCentres.map(pc => (
+                  <option key={pc.polling_centre_code} value={pc.polling_centre_code}>{pc.polling_centre_name}</option>
+                ))}
+              </select>
+            </>
+          )}
+          {mode === 'login' && (
+            <input
+              name="password"
+              type="password"
+              placeholder="Password"
+              value={form.password}
+              onChange={handleChange}
+              required
+              style={dropdownStyle}
+            />
+          )}
           <button type="submit" disabled={loading} style={{
             width: '100%',
             padding: '0.8rem 0',
