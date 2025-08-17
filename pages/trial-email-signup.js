@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// Replace with your Supabase project URL and public anon key
 const supabase = createClient(
-  "https://YOUR-SUPABASE-PROJECT.supabase.co",
-  "YOUR_PUBLIC_ANON_KEY"
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
 export default function TrialEmailSignUp() {
@@ -20,7 +19,6 @@ export default function TrialEmailSignUp() {
       password,
       options: {
         emailRedirectTo: "https://ourwill.vercel.app/"
-        // Change this to your actual redirect URL
       },
     });
     if (error) {
