@@ -202,6 +202,7 @@ export default function RegisterUser() {
           }]);
 
         if (profileError) {
+          console.error(profileError); // <-- always log for debugging
           setErrorMsg('Registration failed while saving profile: ' + profileError.message);
           setLoading(false);
           return;
