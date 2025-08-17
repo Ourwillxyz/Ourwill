@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid'; // Install via: npm install uuid
 import supabase from '../src/supabaseClient';
 
 export default function RegisterUser() {
@@ -166,9 +167,13 @@ export default function RegisterUser() {
 
     try {
       if (mode === 'register') {
-        // Register user with Supabase Auth (no password)
+        // Generate a random password for signup
+        const randomPassword = uuidv4();
+
+        // Register user with Supabase Auth (using random password)
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: form.email,
+          password: randomPassword,
         });
         if (signUpError) {
           setErrorMsg(signUpError.message);
