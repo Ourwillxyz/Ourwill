@@ -215,7 +215,7 @@ export default function RegisterUser() {
           return;
         }
 
-        setSuccessMsg('Registration successful! Please check your email for a link to set your password before logging in.');
+        setSuccessMsg('Registration successful! Please check your email for a link to set your password before logging in. The link will take you to a password setup page.');
       } else {
         // Login with Supabase Auth
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -418,7 +418,7 @@ export default function RegisterUser() {
         {mode === 'register' && (
           <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
             <p>
-              <strong>Note:</strong> After registering, please check your email for a link to set your password before logging in.
+              <strong>Note:</strong> After registering, please check your email for a link to set your password before logging in. The link will take you to a password setup page.
             </p>
           </div>
         )}
