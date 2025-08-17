@@ -15,11 +15,11 @@ export default function Callback() {
       }
 
       if (data?.session) {
-        // ✅ Instead of login.js, send user to set-password.js
+        // ✅ Redirect straight to set-password.js
         router.replace("/set-password");
       } else {
-        // If no session, fallback to register or login
-        router.replace("/registerUser");
+        // If no session, fallback to trial-email-signup
+        router.replace("/trial-email-signup");
       }
     };
 
