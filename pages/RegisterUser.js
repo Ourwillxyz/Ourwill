@@ -181,10 +181,10 @@ export default function RegisterUser() {
           return;
         }
 
-        // Check user id
+        // Defensive: Only proceed if user object exists
         const userId = signUpData?.user?.id;
         if (!userId) {
-          setErrorMsg('Could not retrieve user ID after sign up.');
+          setErrorMsg('Registration failed: No user object returned. Please try again or contact support.');
           setLoading(false);
           return;
         }
