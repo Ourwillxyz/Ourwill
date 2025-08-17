@@ -1,54 +1,58 @@
 // pages/auth/callback.js
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../src/supabaseClient";
 
 export default function Callback() {
-  const [message, setMessage] = useState("Verifying login...");
   const router = useRouter();
 
   useEffect(() => {
-    const handleAuth = async () => {
+    const handleCallback = async () => {
       try {
-        let sessionResponse;
+        // Supabase parses URL fragment automatically
+        const { data, error } = await supabase.auth.getSession();
 
-        if (router.query.code) {
-          // Case: Supabase returned ?code=... (PKCE flow)
-          sessionResponse = await supabase.auth.exchangeCodeForSession(router.query.code);
+        if (error) {
+          console.error("Session fetch error:", error);
+          router.replace("/login?error=auth");
+          return;
+        }
+
+        if (data?.session) {
+          // User is authenticated 🎉
+          router.replace("/dashboard");
         } else {
-          // Case: Supabase returned #access_token=... (magic link flow)
-          sessionResponse = await supabase.auth.getSession();
-        }
+          // If session not yet available, try exchange
+          const { data: hashData, error: hashError } =
+            await supabase.auth.exchangeCodeForSession(window.location.href);
 
-        if (sessionResponse.error) {
-          console.error("Auth error:", sessionResponse.error.message);
-          setMessage("❌ Login failed: " + sessionResponse.error.message);
-          return;
+          if (hashError) {
+            console.error("Exchange error:", hashError);
+            router.replace("/login?error=auth");
+          } else {
+            router.replace("/dashboard");
+          }
         }
-
-        const session = sessionResponse.data?.session;
-        if (!session) {
-          setMessage("❌ No active session found.");
-          return;
-        }
-
-        // Success 🎉
-        setMessage("✅ Login successful! Redirecting...");
-        router.replace("/dashboard"); // change to your target page
       } catch (err) {
-        console.error("Unexpected error:", err);
-        setMessage("❌ Something went wrong.");
+        console.error("Callback handling failed:", err);
+        router.replace("/login?error=server");
       }
     };
 
-    if (router.isReady) {
-      handleAuth();
-    }
+    handleCallback();
   }, [router]);
 
   return (
-    <div style={{ textAlign: "center", padding: 40 }}>
-      <h2>{message}</h2>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "1.4rem",
+      }}
+    >
+      Verifying login...
     </div>
   );
 }
