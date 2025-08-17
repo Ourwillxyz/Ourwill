@@ -13,16 +13,20 @@ export default function TrialMagicLinkSignUp() {
   const handleMagicLink = async (e) => {
     e.preventDefault();
     setMessage("");
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true }
+      options: {
+        shouldCreateUser: true,
+        // 👇 Supabase will redirect here after clicking the email link
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
+
     if (error) {
       setMessage(error.message);
     } else {
-      setMessage(
-        "Check your email for a magic link to sign in instantly!"
-      );
+      setMessage("Check your email for a magic link to sign in instantly!");
     }
   };
 
@@ -36,7 +40,7 @@ export default function TrialMagicLinkSignUp() {
           type="email"
           required
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           placeholder="Enter your email"
           style={{ width: "100%", marginBottom: 12, padding: 8 }}
         />
