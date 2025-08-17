@@ -8,25 +8,42 @@ export default function Callback() {
   const router = useRouter();
 
   useEffect(() => {
-    const verify = async () => {
-      const { data, error } = await supabase.auth.getSession();
+    const handleAuth = async () => {
+      try {
+        let sessionResponse;
 
-      if (error) {
-        setMessage("❌ Error verifying login.");
-        console.error(error);
-        return;
-      }
+        if (router.query.code) {
+          // Case: Supabase returned ?code=... (PKCE flow)
+          sessionResponse = await supabase.auth.exchangeCodeForSession(router.query.code);
+        } else {
+          // Case: Supabase returned #access_token=... (magic link flow)
+          sessionResponse = await supabase.auth.getSession();
+        }
 
-      if (data.session) {
+        if (sessionResponse.error) {
+          console.error("Auth error:", sessionResponse.error.message);
+          setMessage("❌ Login failed: " + sessionResponse.error.message);
+          return;
+        }
+
+        const session = sessionResponse.data?.session;
+        if (!session) {
+          setMessage("❌ No active session found.");
+          return;
+        }
+
+        // Success 🎉
         setMessage("✅ Login successful! Redirecting...");
-        router.replace("/dashboard"); // change to your landing page
-      } else {
-        setMessage("❌ No active session found.");
-        router.replace("/");
+        router.replace("/dashboard"); // change to your target page
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        setMessage("❌ Something went wrong.");
       }
     };
 
-    verify();
+    if (router.isReady) {
+      handleAuth();
+    }
   }, [router]);
 
   return (
