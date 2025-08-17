@@ -1,47 +1,53 @@
-// pages/auth/callback.js
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import supabase from "../../src/supabaseClient";  // 👈 fixed path
+import { supabase } from "../../src/supabaseClient";
 
 export default function Callback() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
+    const handleAuth = async () => {
+      const { data, error } = await supabase.auth.getSession();
 
-        if (error) {
-          console.error("Error fetching session:", error.message);
-          router.push("/login");
-          return;
-        }
-
-        if (!session) {
-          console.error("No active session found.");
-          router.push("/login");
-          return;
-        }
-
-        const user = session.user;
-        const hasPassword = user.app_metadata?.provider === "email";
-
-        if (!hasPassword) {
-          router.push("/set-password");
-        } else {
-          router.push("/dashboard");
-        }
-      } catch (err) {
-        console.error("Callback error:", err);
+      if (error) {
+        console.error("Error fetching session:", error.message);
         router.push("/login");
+        return;
+      }
+
+      const session = data?.session;
+
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      // ✅ User is logged in
+      const user = session.user;
+
+      // Check if user already has a password set
+      const { data: identities, error: identityError } = await supabase.auth.admin.listIdentities();
+
+      if (identityError) {
+        console.error("Error checking identities:", identityError.message);
+        router.push("/dashboard");
+        return;
+      }
+
+      // If the user doesn’t have a password, send them to set-password
+      const hasPassword = identities.identities?.some(
+        (identity) => identity.provider === "email"
+      );
+
+      if (!hasPassword) {
+        router.push("/set-password");
+      } else {
+        router.push("/dashboard");
       }
     };
 
-    handleCallback();
+    handleAuth();
   }, [router]);
 
-  return <p>Finishing login, please wait...</p>;
+  return <p>Finishing login... please wait.</p>;
 }
