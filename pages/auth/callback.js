@@ -9,21 +9,27 @@ export default function Callback() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        // Get the current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
-          console.error("No session:", sessionError);
+        // IMPORTANT: exchange the code from URL into a session
+        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        if (error) {
+          console.error("Session exchange error:", error.message);
           router.replace("/trial-email-signup");
           return;
         }
 
-        const user = session.user;
+        const { user, session } = data || {};
+        if (!user || !session) {
+          console.error("No user/session after exchange");
+          router.replace("/trial-email-signup");
+          return;
+        }
+
         console.log("Authenticated user:", user);
 
-        // wait a little to allow trigger insert voter row
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Small delay to allow RLS/triggers to insert voter row
+        await new Promise((resolve) => setTimeout(resolve, 3000));
 
-        // Try finding user in voter table
+        // Check if voter record exists
         const { data: voter, error: voterError } = await supabase
           .from("voter")
           .select("*")
@@ -38,10 +44,9 @@ export default function Callback() {
 
         if (voter) {
           console.log("Voter found:", voter);
-          // redirect verified users to dashboard (adjust as needed)
           router.replace("/dashboard");
         } else {
-          console.warn("No voter record found for user, redirecting...");
+          console.warn("No voter record found, redirecting...");
           router.replace("/trial-email-signup");
         }
       } catch (err) {
