@@ -20,29 +20,39 @@ export default function Callback() {
         const user = session.user;
         console.log("Auth user:", user);
 
-        // Add delay to allow voter record to be created
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2s delay
+        let voterData = null;
+        let voterError = null;
 
-        // Check voter table
-        const { data: voterData, error: voterError } = await supabase
-          .from("voter")
-          .select("*")
-          .eq("id", user.id) // assuming voter.id matches auth.users.id
-          .single();
+        // Retry up to 5 times with 2s delay
+        for (let attempt = 1; attempt <= 5; attempt++) {
+          console.log(`Checking voter table... attempt ${attempt}`);
 
+          const { data, error } = await supabase
+            .from("voter")
+            .select("*")
+            .eq("id", user.id) // adjust if voter uses email instead
+            .single();
+
+          voterData = data;
+          voterError = error;
+
+          if (voterData) {
+            console.log("✅ Voter record found:", voterData);
+            router.push("/set-password");
+            return;
+          }
+
+          console.log("⏳ No voter yet, waiting 2s before retry...");
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        // After retries, no voter found
         if (voterError) {
           console.error("Voter table error:", voterError.message);
-          router.push("/trial-email-signup");
-          return;
         }
+        console.log("❌ No voter record found after retries.");
+        router.push("/trial-email-signup");
 
-        if (voterData) {
-          console.log("Voter record found:", voterData);
-          router.push("/set-password");
-        } else {
-          console.log("No voter record found, redirecting...");
-          router.push("/trial-email-signup");
-        }
       } catch (err) {
         console.error("Callback error:", err.message);
         router.push("/trial-email-signup");
