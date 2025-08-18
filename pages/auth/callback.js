@@ -1,7 +1,7 @@
 // pages/auth/callback.js
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { supabase } from '../../src/supabaseClient';
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import { supabase } from "../../src/supabaseClient";
 
 export default function Callback() {
   const router = useRouter();
@@ -9,47 +9,49 @@ export default function Callback() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        // Wait for Supabase session
+        // Get the current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) {
-          console.error('No session found', sessionError);
-          router.push('/trial-email-signup');
+          console.error("No session:", sessionError);
+          router.replace("/trial-email-signup");
           return;
         }
 
-        // Add slight delay to allow trigger → voter insert to complete
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
         const user = session.user;
+        console.log("Authenticated user:", user);
 
-        // Check in voter table directly
+        // wait a little to allow trigger insert voter row
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        // Try finding user in voter table
         const { data: voter, error: voterError } = await supabase
-          .from('voter')
-          .select('*')
-          .eq('email', user.email)
+          .from("voter")
+          .select("*")
+          .eq("email", user.email)
           .single();
 
         if (voterError) {
-          console.error('Error fetching voter:', voterError.message);
-          router.push('/trial-email-signup');
+          console.error("Error fetching voter:", voterError.message);
+          router.replace("/trial-email-signup");
           return;
         }
 
-        // Redirect logic
-        if (voter && voter.status === 'pending') {
-          router.push('/set-password');
+        if (voter) {
+          console.log("Voter found:", voter);
+          // redirect verified users to dashboard (adjust as needed)
+          router.replace("/dashboard");
         } else {
-          router.push('/');
+          console.warn("No voter record found for user, redirecting...");
+          router.replace("/trial-email-signup");
         }
-
       } catch (err) {
-        console.error('Unexpected error:', err.message);
-        router.push('/trial-email-signup');
+        console.error("Unexpected error in callback:", err);
+        router.replace("/trial-email-signup");
       }
     };
 
     handleAuth();
   }, [router]);
 
-  return <p>Processing login, please wait...</p>;
+  return <p>Processing login... please wait.</p>;
 }
