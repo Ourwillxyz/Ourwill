@@ -1,75 +1,56 @@
-// File: pages/auth/callback.js
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { supabase } from '../../src/supabaseClient';
+// pages/auth/callback.js
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import { supabase } from "../../src/supabaseClient";
 
 export default function Callback() {
   const router = useRouter();
-  const [msg, setMsg] = useState('Finishing login... please wait.');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
+    const handleAuth = async () => {
       try {
-        // Get current authenticated user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-
-        if (!user) {
-          setMsg('User not found. Redirecting to signup...');
-          setTimeout(() => router.push('/trial-email-signup'), 2000);
+        // Get Supabase session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          console.error("Session error:", error);
+          router.push("/trial-email-signup");
           return;
         }
 
-        // Check if user exists in voter table (you can adjust table name)
+        const user = session.user;
+        console.log("Auth user:", user);
+
+        // Add delay to allow voter record to be created
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2s delay
+
+        // Check voter table
         const { data: voterData, error: voterError } = await supabase
-          .from('voter')
-          .select('*')
-          .eq('email', user.email)
+          .from("voter")
+          .select("*")
+          .eq("id", user.id) // assuming voter.id matches auth.users.id
           .single();
 
-        if (voterError && voterError.code !== 'PGRST116') {
-          // Any error other than "no rows found"
-          throw voterError;
+        if (voterError) {
+          console.error("Voter table error:", voterError.message);
+          router.push("/trial-email-signup");
+          return;
         }
 
-        if (!voterData) {
-          // User not in voter table, redirect to set-password.js anyway
-          router.push('/set-password');
+        if (voterData) {
+          console.log("Voter record found:", voterData);
+          router.push("/set-password");
         } else {
-          // User exists in voter table, redirect to dashboard
-          router.push('/dashboard');
+          console.log("No voter record found, redirecting...");
+          router.push("/trial-email-signup");
         }
-      } catch (error) {
-        console.error('Callback error:', error);
-        setMsg('Unexpected error, please try again.');
-        setLoading(false);
+      } catch (err) {
+        console.error("Callback error:", err.message);
+        router.push("/trial-email-signup");
       }
     };
 
-    handleAuthCallback();
+    handleAuth();
   }, [router]);
 
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #ece9f7 0%, #fff 100%)',
-      textAlign: 'center',
-      padding: '2rem'
-    }}>
-      <div style={{
-        background: '#fff',
-        padding: '2rem 3rem',
-        borderRadius: 16,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.17)',
-        maxWidth: 400
-      }}>
-        <h2 style={{ color: '#4733a8', marginBottom: 16 }}>{msg}</h2>
-        {loading && <p style={{ color: '#4f46e5' }}>Please wait...</p>}
-      </div>
-    </div>
-  );
+  return <p>Finishing login... please wait.</p>;
 }
