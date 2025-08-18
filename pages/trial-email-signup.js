@@ -1,54 +1,73 @@
-import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+// pages/trial-email-signup.js
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { supabase } from "../src/supabaseClient";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+export default function TrialEmailSignup() {
+  const router = useRouter();
+  const [countdown, setCountdown] = useState(10);
 
-export default function TrialMagicLinkSignUp() {
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
+  useEffect(() => {
+    let intervalId;
+    let countdownId;
 
-  const handleMagicLink = async (e) => {
-    e.preventDefault();
-    setMessage("");
+    const checkStatus = async () => {
+      try {
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        // 👇 Supabase will redirect here after clicking the email link
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+        const user = session.user;
 
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage("Check your email for a magic link to sign in instantly!");
-    }
-  };
+        // Fetch voter status
+        const { data: voter, error } = await supabase
+          .from("voter")
+          .select("status")
+          .eq("email", user.email)
+          .single();
+
+        if (error) {
+          console.error("Error checking voter:", error.message);
+          return;
+        }
+
+        if (voter?.status === "verified") {
+          clearInterval(intervalId);
+          clearInterval(countdownId);
+          router.replace("/dashboard");
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    };
+
+    // Countdown timer
+    countdownId = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) return 10; // reset when reaching 0
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Polling every 10 seconds
+    intervalId = setInterval(checkStatus, 10000);
+
+    // Run immediately on mount
+    checkStatus();
+
+    return () => {
+      clearInterval(intervalId);
+      clearInterval(countdownId);
+    };
+  }, [router]);
 
   return (
-    <div style={{ maxWidth: 400, margin: "2rem auto", border: "1px solid #eee", padding: "2rem", borderRadius: 8 }}>
-      <h2>Try Our App Instantly</h2>
-      <form onSubmit={handleMagicLink}>
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Enter your email"
-          style={{ width: "100%", marginBottom: 12, padding: 8 }}
-        />
-        <button type="submit" style={{ width: "100%", padding: 10 }}>
-          Get Magic Link
-        </button>
-      </form>
-      <p style={{ marginTop: 16, color: "#0070f3" }}>{message}</p>
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-2xl font-bold">Waiting for Verification</h1>
+      <p className="mt-2">Your account is pending verification.</p>
+      <p className="mt-2 text-gray-600">
+        Checking again in <span className="font-semibold">{countdown}</span> seconds...
+      </p>
     </div>
   );
 }
