@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../src/supabaseClient";
 
@@ -7,7 +7,30 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    // On mount, check for access_token and refresh_token in URL
+    const { access_token, refresh_token } = router.query;
+    if (access_token && refresh_token) {
+      supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      })
+      .then(() => setSessionReady(true))
+      .catch((err) => {
+        setError("Session error: " + (err.message || "Couldn't authenticate"));
+      });
+    } else {
+      // If not present, check if session exists
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
+          setSessionReady(true);
+        }
+      });
+    }
+  }, [router.query]);
 
   const handleReset = async (e) => {
     e.preventDefault();
@@ -21,7 +44,6 @@ export default function ResetPasswordPage() {
       setError(error.message);
     } else {
       setMessage("Password reset successful! You can now log in.");
-      // Optionally redirect to login after a short delay
       setTimeout(() => {
         router.push("/login");
       }, 2500);
@@ -68,7 +90,7 @@ export default function ResetPasswordPage() {
         />
         <button
           type="submit"
-          disabled={loading || !newPassword}
+          disabled={loading || !newPassword || !sessionReady}
           style={{
             width: "100%",
             padding: "12px 0",
@@ -84,6 +106,17 @@ export default function ResetPasswordPage() {
         >
           {loading ? "Resetting..." : "Reset Password"}
         </button>
+        {!sessionReady && (
+          <div
+            style={{
+              marginTop: 16,
+              color: "#f59e42",
+              fontWeight: 500
+            }}
+          >
+            Authenticating session, please wait...
+          </div>
+        )}
         {error && (
           <div
             style={{
