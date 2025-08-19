@@ -6,10 +6,10 @@ export default function RegisterUser() {
   const [form, setForm] = useState({
     email: '',
     mobile: '',
-    county_code: '',
-    subcounty_code: '',
-    ward_code: '',
-    polling_centre_code: '',
+    county: '',
+    subcounty: '',
+    ward: '',
+    polling_centre: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,7 @@ export default function RegisterUser() {
     (async () => {
       const { data, error } = await supabase
         .from('counties')
-        .select('county_code, county_name')
+        .select('county_name')
         .order('county_name', { ascending: true });
       if (error) {
         setErrorMsg('Error fetching counties: ' + error.message);
@@ -50,77 +50,77 @@ export default function RegisterUser() {
     })();
   }, []);
 
-  // Fetch subcounties when county_code changes
+  // Fetch subcounties when county changes
   useEffect(() => {
-    if (!form.county_code) {
+    if (!form.county) {
       setSubcounties([]);
       return;
     }
     (async () => {
       const { data, error } = await supabase
         .from('subcounties')
-        .select('subcounty_code, subcounty_name')
-        .eq('county_code', form.county_code)
+        .select('subcounty_name')
+        .eq('county_name', form.county)
         .order('subcounty_name', { ascending: true });
       if (!error && data) setSubcounties(data);
     })();
-  }, [form.county_code]);
+  }, [form.county]);
 
-  // Fetch wards when subcounty_code changes
+  // Fetch wards when subcounty changes
   useEffect(() => {
-    if (!form.subcounty_code) {
+    if (!form.subcounty) {
       setWards([]);
       return;
     }
     (async () => {
       const { data, error } = await supabase
         .from('wards')
-        .select('ward_code, ward_name')
-        .eq('subcounty_code', form.subcounty_code)
+        .select('ward_name')
+        .eq('subcounty_name', form.subcounty)
         .order('ward_name', { ascending: true });
       if (!error && data) setWards(data);
     })();
-  }, [form.subcounty_code]);
+  }, [form.subcounty]);
 
-  // Fetch polling centres when ward_code changes
+  // Fetch polling centres when ward changes
   useEffect(() => {
-    if (!form.ward_code) {
+    if (!form.ward) {
       setPollingCentres([]);
       return;
     }
     (async () => {
       const { data, error } = await supabase
         .from('polling_centres')
-        .select('polling_centre_code, polling_centre_name')
-        .eq('ward_code', form.ward_code)
+        .select('polling_centre_name')
+        .eq('ward_name', form.ward)
         .order('polling_centre_name', { ascending: true });
       if (!error && data) setPollingCentres(data);
     })();
-  }, [form.ward_code]);
+  }, [form.ward]);
 
   // Only reset dependent fields in handleChange
   function handleChange(e) {
     const { name, value } = e.target;
-    if (name === 'county_code') {
+    if (name === 'county') {
       setForm(f => ({
         ...f,
-        county_code: value,
-        subcounty_code: '',
-        ward_code: '',
-        polling_centre_code: ''
+        county: value,
+        subcounty: '',
+        ward: '',
+        polling_centre: ''
       }));
-    } else if (name === 'subcounty_code') {
+    } else if (name === 'subcounty') {
       setForm(f => ({
         ...f,
-        subcounty_code: value,
-        ward_code: '',
-        polling_centre_code: ''
+        subcounty: value,
+        ward: '',
+        polling_centre: ''
       }));
-    } else if (name === 'ward_code') {
+    } else if (name === 'ward') {
       setForm(f => ({
         ...f,
-        ward_code: value,
-        polling_centre_code: ''
+        ward: value,
+        polling_centre: ''
       }));
     } else {
       setForm(f => ({
@@ -139,7 +139,7 @@ export default function RegisterUser() {
 
     // Validation
     if (mode === 'register') {
-      for (const key of ['email', 'mobile', 'county_code', 'subcounty_code', 'ward_code', 'polling_centre_code', 'password']) {
+      for (const key of ['email', 'mobile', 'county', 'subcounty', 'ward', 'polling_centre', 'password']) {
         if (!form[key]) {
           setErrorMsg('Please fill all fields.');
           setLoading(false);
@@ -192,16 +192,17 @@ export default function RegisterUser() {
           return;
         }
 
-        // Insert user profile info
+        // Insert user profile info to profiles table
         const { error: profileError } = await supabase
           .from('profiles')
           .insert([{
             id: userId,
             mobile: form.mobile,
-            county_code: form.county_code,
-            subcounty_code: form.subcounty_code,
-            ward_code: form.ward_code,
-            polling_centre_code: form.polling_centre_code,
+            email: form.email,
+            county: form.county,
+            subcounty: form.subcounty,
+            ward: form.ward,
+            polling_centre: form.polling_centre,
           }]);
 
         if (profileError) {
@@ -335,57 +336,57 @@ export default function RegisterUser() {
               />
               {/* County Dropdown */}
               <select
-                name="county_code"
-                value={form.county_code}
+                name="county"
+                value={form.county}
                 onChange={handleChange}
                 required
                 style={dropdownStyle}
               >
                 <option value="">Select County</option>
                 {counties.map(c => (
-                  <option key={c.county_code} value={c.county_code}>{c.county_name}</option>
+                  <option key={c.county_name} value={c.county_name}>{c.county_name}</option>
                 ))}
               </select>
               {/* Subcounty Dropdown */}
               <select
-                name="subcounty_code"
-                value={form.subcounty_code}
+                name="subcounty"
+                value={form.subcounty}
                 onChange={handleChange}
                 required
                 style={dropdownStyle}
-                disabled={!form.county_code || subcounties.length === 0}
+                disabled={!form.county || subcounties.length === 0}
               >
                 <option value="">Select Subcounty</option>
                 {subcounties.map(sc => (
-                  <option key={sc.subcounty_code} value={sc.subcounty_code}>{sc.subcounty_name}</option>
+                  <option key={sc.subcounty_name} value={sc.subcounty_name}>{sc.subcounty_name}</option>
                 ))}
               </select>
               {/* Ward Dropdown */}
               <select
-                name="ward_code"
-                value={form.ward_code}
+                name="ward"
+                value={form.ward}
                 onChange={handleChange}
                 required
                 style={dropdownStyle}
-                disabled={!form.subcounty_code || wards.length === 0}
+                disabled={!form.subcounty || wards.length === 0}
               >
                 <option value="">Select Ward</option>
                 {wards.map(w => (
-                  <option key={w.ward_code} value={w.ward_code}>{w.ward_name}</option>
+                  <option key={w.ward_name} value={w.ward_name}>{w.ward_name}</option>
                 ))}
               </select>
               {/* Polling Centre Dropdown */}
               <select
-                name="polling_centre_code"
-                value={form.polling_centre_code}
+                name="polling_centre"
+                value={form.polling_centre}
                 onChange={handleChange}
                 required
                 style={dropdownStyle}
-                disabled={!form.ward_code || pollingCentres.length === 0}
+                disabled={!form.ward || pollingCentres.length === 0}
               >
                 <option value="">Select Polling Centre</option>
                 {pollingCentres.map(pc => (
-                  <option key={pc.polling_centre_code} value={pc.polling_centre_code}>{pc.polling_centre_name}</option>
+                  <option key={pc.polling_centre_name} value={pc.polling_centre_name}>{pc.polling_centre_name}</option>
                 ))}
               </select>
               {/* Password input for registration */}
