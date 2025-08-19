@@ -16,6 +16,7 @@ export default function RegisterUser() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [forgotMsg, setForgotMsg] = useState('');
 
   // Dropdown options state
   const [counties, setCounties] = useState([]);
@@ -134,6 +135,7 @@ export default function RegisterUser() {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
+    setForgotMsg('');
     setLoading(true);
 
     // Validation
@@ -239,6 +241,26 @@ export default function RegisterUser() {
     setLoading(false);
   }
 
+  // Forgot password handler
+  async function handleForgotPassword() {
+    setForgotMsg('');
+    setErrorMsg('');
+    if (!form.email || !form.email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
+      setForgotMsg('Enter a valid email address above first.');
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
+      redirectTo: 'https://ourwill.vercel.app/reset-password',
+    });
+    if (error) {
+      setForgotMsg('Error: ' + error.message);
+    } else {
+      setForgotMsg('Password reset email sent! Please check your inbox.');
+    }
+    setLoading(false);
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -272,7 +294,7 @@ export default function RegisterUser() {
               fontWeight: 600,
               cursor: "pointer"
             }}
-            onClick={() => { setMode("register"); setErrorMsg(""); setSuccessMsg(""); }}
+            onClick={() => { setMode("register"); setErrorMsg(""); setSuccessMsg(""); setForgotMsg(""); }}
           >
             Register
           </button>
@@ -287,7 +309,7 @@ export default function RegisterUser() {
               fontWeight: 600,
               cursor: "pointer"
             }}
-            onClick={() => { setMode("login"); setErrorMsg(""); setSuccessMsg(""); }}
+            onClick={() => { setMode("login"); setErrorMsg(""); setSuccessMsg(""); setForgotMsg(""); }}
           >
             Login
           </button>
@@ -409,6 +431,39 @@ export default function RegisterUser() {
               : (mode === 'register' ? 'Register' : 'Login')}
           </button>
         </form>
+        {/* Forgot password button and message */}
+        {mode === 'login' && (
+          <div style={{ marginTop: 6, textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={loading}
+              style={{
+                background: 'none',
+                color: '#3b82f6',
+                border: 'none',
+                fontSize: '0.98em',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                marginTop: '0.2rem',
+              }}
+            >
+              Forgot password?
+            </button>
+            {forgotMsg && (
+              <div style={{
+                marginTop: 6,
+                color: forgotMsg.startsWith('Error') ? '#ef4444' : '#22c55e',
+                background: forgotMsg.startsWith('Error') ? '#fee2e2' : '#dcfce7',
+                padding: '0.65rem',
+                borderRadius: '4px',
+                fontSize: '0.97rem',
+              }}>
+                {forgotMsg}
+              </div>
+            )}
+          </div>
+        )}
         {successMsg && <div style={{
           width: '100%',
           marginTop: '1rem',
