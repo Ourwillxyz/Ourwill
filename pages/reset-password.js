@@ -8,6 +8,7 @@ export default function ResetPasswordPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -20,10 +21,10 @@ export default function ResetPasswordPage() {
       })
       .then(() => setSessionReady(true))
       .catch((err) => {
+        setSessionError(true);
         setError("Session error: " + (err.message || "Couldn't authenticate"));
       });
     } else {
-      // If not present, check if session exists
       supabase.auth.getSession().then(({ data }) => {
         if (data.session) {
           setSessionReady(true);
@@ -38,7 +39,6 @@ export default function ResetPasswordPage() {
     setError("");
     setMessage("");
 
-    // Actually update password via Supabase
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
       setError(error.message);
@@ -78,6 +78,7 @@ export default function ResetPasswordPage() {
           onChange={e => setNewPassword(e.target.value)}
           placeholder="Enter your new password"
           required
+          aria-label="New password"
           style={{
             width: "100%",
             padding: "12px 16px",
@@ -87,10 +88,11 @@ export default function ResetPasswordPage() {
             fontSize: "1rem",
             background: "#f7f7fa"
           }}
+          disabled={!sessionReady || sessionError}
         />
         <button
           type="submit"
-          disabled={loading || !newPassword || !sessionReady}
+          disabled={loading || !newPassword || !sessionReady || sessionError}
           style={{
             width: "100%",
             padding: "12px 0",
@@ -106,7 +108,7 @@ export default function ResetPasswordPage() {
         >
           {loading ? "Resetting..." : "Reset Password"}
         </button>
-        {!sessionReady && (
+        {!sessionReady && !sessionError && (
           <div
             style={{
               marginTop: 16,
@@ -115,6 +117,17 @@ export default function ResetPasswordPage() {
             }}
           >
             Authenticating session, please wait...
+          </div>
+        )}
+        {sessionError && (
+          <div
+            style={{
+              marginTop: 16,
+              color: "#dc2626",
+              fontWeight: 500
+            }}
+          >
+            Unable to authenticate your session. Please use a valid password reset link.
           </div>
         )}
         {error && (
