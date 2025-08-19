@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import supabase from '../src/supabaseClient';
 
 export default function RegisterUser() {
@@ -140,7 +139,7 @@ export default function RegisterUser() {
 
     // Validation
     if (mode === 'register') {
-      for (const key of ['email', 'mobile', 'county_code', 'subcounty_code', 'ward_code', 'polling_centre_code']) {
+      for (const key of ['email', 'mobile', 'county_code', 'subcounty_code', 'ward_code', 'polling_centre_code', 'password']) {
         if (!form[key]) {
           setErrorMsg('Please fill all fields.');
           setLoading(false);
@@ -149,6 +148,11 @@ export default function RegisterUser() {
       }
       if (!form.email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
         setErrorMsg('Enter a valid email.');
+        setLoading(false);
+        return;
+      }
+      if (form.password.length < 6) {
+        setErrorMsg('Password must be at least 6 characters.');
         setLoading(false);
         return;
       }
@@ -167,13 +171,10 @@ export default function RegisterUser() {
 
     try {
       if (mode === 'register') {
-        // Generate a random password for signup
-        const randomPassword = uuidv4();
-
-        // Register user with Supabase Auth (using random password)
+        // Register user with Supabase Auth (using entered password)
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: form.email,
-          password: randomPassword,
+          password: form.password,
         });
 
         // Check for sign up error
@@ -204,24 +205,12 @@ export default function RegisterUser() {
           }]);
 
         if (profileError) {
-          console.error(profileError);
           setErrorMsg('Registration failed while saving profile: ' + profileError.message);
           setLoading(false);
           return;
         }
 
-        // Send password reset (recovery) email
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email, {
-          redirectTo: 'https://ourwill.vercel.app/reset-password',
-        });
-
-        if (resetError) {
-          setErrorMsg('Error sending password setup email: ' + resetError.message);
-          setLoading(false);
-          return;
-        }
-
-        setSuccessMsg('Registration successful! Please check your email for a link to set your password before logging in. The link will take you to a password setup page.');
+        setSuccessMsg('Registration successful! Please check your email to verify your account before logging in.');
       } else {
         // Login with Supabase Auth
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -399,6 +388,16 @@ export default function RegisterUser() {
                   <option key={pc.polling_centre_code} value={pc.polling_centre_code}>{pc.polling_centre_name}</option>
                 ))}
               </select>
+              {/* Password input for registration */}
+              <input
+                name="password"
+                type="password"
+                placeholder="Password (min 6 characters)"
+                value={form.password}
+                onChange={handleChange}
+                required
+                style={dropdownStyle}
+              />
             </>
           )}
           {mode === 'login' && (
@@ -477,7 +476,7 @@ export default function RegisterUser() {
         {mode === 'register' && (
           <div style={{ marginTop: '1.3rem', color: '#555', fontSize: '0.97em', lineHeight: 1.5, textAlign: 'center' }}>
             <p>
-              <strong>Note:</strong> After registering, please check your email for a link to set your password before logging in. The link will take you to a password setup page.
+              <strong>Note:</strong> After registering, please check your email to verify your account before logging in.
             </p>
           </div>
         )}
