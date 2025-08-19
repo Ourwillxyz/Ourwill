@@ -1,47 +1,112 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-// import { supabase } from "../utils/supabaseClient"; // Uncomment if you have Supabase set up
+import { supabase } from "../src/supabaseClient";
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleReset = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
+    setMessage("");
 
-    // Example: Get access_token from query params
-    const { access_token, type } = router.query;
-
-    // TODO: Connect with Supabase password update API here
-    // Example:
-    // const { error } = await supabase.auth.api.updateUser(access_token, { password: newPassword });
-    // if (error) setError(error.message);
-    // else setMessage("Password reset successful!");
-
-    // For now, just show a fake success message
-    setMessage("Password reset submitted! (Implement Supabase logic here)");
+    // Actually update password via Supabase
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setError(error.message);
+    } else {
+      setMessage("Password reset successful! You can now log in.");
+      // Optionally redirect to login after a short delay
+      setTimeout(() => {
+        router.push("/login");
+      }, 2500);
+    }
+    setLoading(false);
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "2rem auto", padding: 16, border: "1px solid #ccc", borderRadius: 8 }}>
-      <h2>Reset Password</h2>
-      <form onSubmit={handleReset}>
-        <label>
-          New Password:
-          <input
-            type="password"
-            value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
-            required
-            style={{ width: "100%", marginBottom: 12 }}
-          />
-        </label>
-        <button type="submit" style={{ width: "100%" }}>Reset Password</button>
+    <div style={{
+      minHeight: "100vh",
+      width: "100vw",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "linear-gradient(135deg, #ece9f7 0%, #fff 100%)"
+    }}>
+      <form
+        onSubmit={handleReset}
+        style={{
+          background: "#fff",
+          padding: "2rem",
+          borderRadius: 16,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.17)",
+          width: "100%",
+          maxWidth: 400,
+        }}
+      >
+        <h2 style={{ color: "#4733a8", marginBottom: 16 }}>Reset Your Password</h2>
+        <input
+          type="password"
+          value={newPassword}
+          onChange={e => setNewPassword(e.target.value)}
+          placeholder="Enter your new password"
+          required
+          style={{
+            width: "100%",
+            padding: "12px 16px",
+            marginBottom: 16,
+            borderRadius: 8,
+            border: "1px solid #d1d5db",
+            fontSize: "1rem",
+            background: "#f7f7fa"
+          }}
+        />
+        <button
+          type="submit"
+          disabled={loading || !newPassword}
+          style={{
+            width: "100%",
+            padding: "12px 0",
+            borderRadius: 8,
+            border: "none",
+            background: loading ? "#a5b4fc" : "#4f46e5",
+            color: "#fff",
+            fontWeight: 600,
+            fontSize: "1rem",
+            cursor: loading ? "not-allowed" : "pointer",
+            transition: "background 0.2s"
+          }}
+        >
+          {loading ? "Resetting..." : "Reset Password"}
+        </button>
+        {error && (
+          <div
+            style={{
+              marginTop: 16,
+              color: "#dc2626",
+              fontWeight: 500
+            }}
+          >
+            {error}
+          </div>
+        )}
+        {message && (
+          <div
+            style={{
+              marginTop: 16,
+              color: "#22c55e",
+              fontWeight: 500
+            }}
+          >
+            {message}
+          </div>
+        )}
       </form>
-      {error && <div style={{ color: "red", marginTop: 8 }}>{error}</div>}
-      {message && <div style={{ color: "green", marginTop: 8 }}>{message}</div>}
     </div>
   );
 }
