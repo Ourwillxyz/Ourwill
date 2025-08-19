@@ -1,49 +1,29 @@
-import { createServerClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { NextRequest, NextResponse } from 'next/server'
+// pages/api/auth/confirm.js
+import { supabase } from '../../../src/supabaseClient';
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const tokenHash = searchParams.get('token_hash')
-  const type = searchParams.get('type')
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard'
+export default async function handler(req, res) {
+  const { token_hash, type, next } = req.query;
 
-  const cookieStore = cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!, // ⚠️ must be Service Role
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) {
-            console.error('Cookie setting error:', error)
-          }
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.delete({ name, ...options })
-          } catch (error) {
-            console.error('Cookie removal error:', error)
-          }
-        },
-      },
-    }
-  )
-
-  const { error } = await supabase.auth.verifyOtp({
-    type: type as any,
-    token_hash: tokenHash || '',
-  })
-
-  if (error) {
-    console.error('Email Verification Error:', error)
-    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url))
+  if (!token_hash || !type) {
+    return res.status(400).json({ error: 'Missing token or type' });
   }
 
-  return NextResponse.redirect(new URL(redirectTo, request.url))
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      type,
+      token_hash,
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Set session cookie if you want
+    // e.g., res.setHeader('Set-Cookie', `sb:token=${data.session.access_token}; Path=/; HttpOnly`);
+
+    // Redirect after verification
+    res.redirect(next || '/dashboard');
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
