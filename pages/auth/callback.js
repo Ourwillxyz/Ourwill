@@ -9,8 +9,11 @@ export default function Callback() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        // IMPORTANT: exchange the code from URL into a session
-        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        // Exchange code in URL for session
+        const { data, error } = await supabase.auth.exchangeCodeForSession(
+          window.location.href
+        );
+
         if (error) {
           console.error("Session exchange error:", error.message);
           router.replace("/trial-email-signup");
@@ -19,22 +22,22 @@ export default function Callback() {
 
         const { user, session } = data || {};
         if (!user || !session) {
-          console.error("No user/session after exchange");
+          console.error("No user/session returned from Supabase");
           router.replace("/trial-email-signup");
           return;
         }
 
         console.log("Authenticated user:", user);
 
-        // Small delay to allow RLS/triggers to insert voter row
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        // Delay to allow Supabase RLS/triggers to create voter row if applicable
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        // Check if voter record exists
+        // Fetch voter record by email
         const { data: voter, error: voterError } = await supabase
           .from("voter")
           .select("*")
           .eq("email", user.email)
-          .single();
+          .maybeSingle(); // prevents hard crash if 0 or >1 rows
 
         if (voterError) {
           console.error("Error fetching voter:", voterError.message);
@@ -58,5 +61,5 @@ export default function Callback() {
     handleAuth();
   }, [router]);
 
-  return <p>Processing login... please wait.</p>;
+  return <p className="text-center mt-10">Processing login... please wait.</p>;
 }
