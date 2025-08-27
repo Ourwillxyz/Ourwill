@@ -1,106 +1,75 @@
 // pages/dashboard.js
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { supabase } from '../src/supabaseClient';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { supabase } from "../src/supabaseClient";
 
 export default function Dashboard() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [ongoingPolls, setOngoingPolls] = useState([]);
-  const [upcomingPolls, setUpcomingPolls] = useState([]);
-  const [closedPolls, setClosedPolls] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    const fetchAll = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+    let mounted = true;
 
-      if (!user) {
-        if (router.isReady) router.replace('/login');
+    const load = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace("/login");
         return;
       }
 
-      setUser(user);
+      const user = session.user;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
 
-      // Insert voter if not exists
-      await supabase
-        .from('voters')
-        .upsert([{ email: user.email, user_id: user.id }], { onConflict: 'email' });
-
-      // Fetch polls with error handling
-      const { data: ongoingData, error: ongoingError } = await supabase
-        .from('polls')
-        .select('*')
-        .eq('status', 'ongoing');
-      if (ongoingError) console.error('Error fetching ongoing polls:', ongoingError);
-      setOngoingPolls(ongoingData || []);
-
-      const { data: upcomingData, error: upcomingError } = await supabase
-        .from('polls')
-        .select('*')
-        .eq('status', 'upcoming');
-      if (upcomingError) console.error('Error fetching upcoming polls:', upcomingError);
-      setUpcomingPolls(upcomingData || []);
-
-      const { data: closedData, error: closedError } = await supabase
-        .from('polls')
-        .select('*')
-        .eq('status', 'closed');
-      if (closedError) console.error('Error fetching closed polls:', closedError);
-      setClosedPolls(closedData || []);
-
-      setLoading(false);
+      if (error) console.error("Profile fetch error:", error.message);
+      if (mounted) {
+        setProfile(data || null);
+        setLoading(false);
+      }
     };
 
-    if (router.isReady) fetchAll();
-  }, [router.isReady]);
+    load();
+    return () => { mounted = false; };
+  }, [router]);
 
-  const handleLogout = async () => {
+  const signOut = async () => {
     await supabase.auth.signOut();
-    router.replace('/login');
+    router.replace("/login");
   };
 
-  if (loading) return <p>Loading dashboard...</p>;
+  if (loading) return <p style={{ padding: 24 }}>Loading…</p>;
 
   return (
-    <div>
-      <h1>Welcome, {user?.email}</h1>
-      <button onClick={handleLogout}>Logout</button>
+    <div style={{ maxWidth: 720, margin: "2rem auto", fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <h1>Dashboard</h1>
+        <button
+          onClick={signOut}
+          style={{
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid #e5e7eb",
+            background: "#fff",
+            cursor: "pointer",
+          }}
+        >
+          Sign out
+        </button>
+      </div>
 
-      <h2>Ongoing Polls</h2>
-      {ongoingPolls.length > 0 ? (
-        ongoingPolls.map((poll) => (
-          <div key={poll.id}>
-            <h3>{poll.title}</h3>
-            <p>{poll.description}</p>
-          </div>
-        ))
+      {profile ? (
+        <div style={{ marginTop: 16 }}>
+          <h3>Your Profile</h3>
+          <pre style={{ background: "#f9fafb", padding: 16, borderRadius: 8 }}>
+            {JSON.stringify(profile, null, 2)}
+          </pre>
+        </div>
       ) : (
-        <p>No ongoing polls</p>
-      )}
-
-      <h2>Upcoming Polls</h2>
-      {upcomingPolls.length > 0 ? (
-        upcomingPolls.map((poll) => (
-          <div key={poll.id}>
-            <h3>{poll.title}</h3>
-            <p>{poll.description}</p>
-          </div>
-        ))
-      ) : (
-        <p>No upcoming polls</p>
-      )}
-
-      <h2>Closed Polls</h2>
-      {closedPolls.length > 0 ? (
-        closedPolls.map((poll) => (
-          <div key={poll.id}>
-            <h3>{poll.title}</h3>
-            <p>{poll.description}</p>
-          </div>
-        ))
-      ) : (
-        <p>No closed polls</p>
+        <p>No profile found (yet).</p>
       )}
     </div>
   );
