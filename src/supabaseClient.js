@@ -1,14 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+// src/supabaseClient.js
 
-// Log the environment variables to verify they are loaded correctly
-console.log("SUPABASE URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-console.log("SUPABASE ANON KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+import { createClient } from "@supabase/supabase-js"
 
 // Get Supabase URL and Anon Key from environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// Create the Supabase client
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Optional: log env vars (remove in production)
+console.log("SUPABASE URL:", supabaseUrl)
+console.log("SUPABASE ANON KEY:", supabaseAnonKey)
 
-export default supabase;
+// ✅ Named export
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
