@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { createClient } from "@supabase/supabase-js"
 
-// Uses your .env.local values for Supabase project
+// Uses your .env.local values
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -15,19 +15,15 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault()
 
-    // Register user using Supabase Auth only
-    const { error } = await supabase.auth.signUp({
-      email,
-      password
-    })
+    // Register using only Supabase Auth
+    const { error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
       setMessage(`Error: ${error.message}`)
       console.error(error)
       return
     }
-
-    setMessage("Registration successful! Please check your email for a verification link.")
+    setMessage("Registration successful! Check your email for a verification link.")
   }
 
   return (
