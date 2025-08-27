@@ -1,65 +1,71 @@
 // pages/auth/callback.js
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../src/supabaseClient";
 
 export default function Callback() {
   const router = useRouter();
+  const [msg, setMsg] = useState("Completing login…");
 
   useEffect(() => {
-    const handleAuth = async () => {
+    let mounted = true;
+
+    const run = async () => {
       try {
-        // Exchange code in URL for session
-        const { data, error } = await supabase.auth.exchangeCodeForSession(
-          window.location.href
-        );
-
-        if (error) {
-          console.error("Session exchange error:", error.message);
-          router.replace("/trial-email-signup");
+        // Supabase should have detected the session in the URL already
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          console.error("No session after callback:", error?.message);
+          if (mounted) setMsg("No active session. Redirecting…");
+          router.replace("/login");
           return;
         }
 
-        const { user, session } = data || {};
-        if (!user || !session) {
-          console.error("No user/session returned from Supabase");
-          router.replace("/trial-email-signup");
+        const user = session.user;
+        if (!user) {
+          if (mounted) setMsg("No user found. Redirecting…");
+          router.replace("/login");
           return;
         }
 
-        console.log("Authenticated user:", user);
+        // (Optional) tiny delay so DB triggers (that auto-insert profiles) complete
+        await new Promise((r) => setTimeout(r, 1000));
 
-        // Delay to allow Supabase RLS/triggers to create voter row if applicable
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Fetch voter record by email
-        const { data: voter, error: voterError } = await supabase
-          .from("voter")
+        // Ensure there is a profiles row for this user
+        const { data: existing, error: fetchErr } = await supabase
+          .from("profiles")
           .select("*")
-          .eq("email", user.email)
-          .maybeSingle(); // prevents hard crash if 0 or >1 rows
+          .eq("id", user.id)
+          .maybeSingle();
 
-        if (voterError) {
-          console.error("Error fetching voter:", voterError.message);
-          router.replace("/trial-email-signup");
-          return;
+        if (fetchErr) {
+          console.error("Error fetching profile:", fetchErr.message);
         }
 
-        if (voter) {
-          console.log("Voter found:", voter);
-          router.replace("/dashboard");
-        } else {
-          console.warn("No voter record found, redirecting...");
-          router.replace("/trial-email-signup");
+        if (!existing) {
+          // Fallback: create a minimal profile if trigger didn't (keeps UX smooth)
+          const { error: insertErr } = await supabase
+            .from("profiles")
+            .insert([{ id: user.id, email: user.email, status: "pending" }]);
+
+          if (insertErr) {
+            console.error("Error creating profile:", insertErr.message);
+            // We still continue to app; RLS/policies may block as needed
+          }
         }
-      } catch (err) {
-        console.error("Unexpected error in callback:", err);
-        router.replace("/trial-email-signup");
+
+        // ✅ All good — route into the app
+        router.replace("/dashboard");
+      } catch (e) {
+        console.error("Callback error:", e);
+        if (mounted) setMsg("Something went wrong. Redirecting…");
+        router.replace("/login");
       }
     };
 
-    handleAuth();
+    run();
+    return () => { mounted = false; };
   }, [router]);
 
-  return <p className="text-center mt-10">Processing login... please wait.</p>;
+  return <p style={{ padding: 24, fontFamily: "system-ui, sans-serif" }}>{msg}</p>;
 }
