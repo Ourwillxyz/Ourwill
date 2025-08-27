@@ -9,15 +9,33 @@ const supabase = createClient(
 export default function Register() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [fullName, setFullName] = useState("")
   const [message, setMessage] = useState("")
 
   const handleRegister = async (e) => {
     e.preventDefault()
-    const { error } = await supabase.auth.signUp({ email, password })
+    // Create user in Auth
+    const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) {
       setMessage(error.message)
+      return
+    }
+    // Get the user ID (UID)
+    const userId = data?.user?.id
+    if (userId) {
+      // Insert into profiles table (add other fields as needed)
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert([
+          { id: userId, email, full_name: fullName } // adjust column names for your schema
+        ])
+      if (profileError) {
+        setMessage("Registered, but error saving profile: " + profileError.message)
+      } else {
+        setMessage("Registered! Check your email for a verification link.")
+      }
     } else {
-      setMessage("Check your email for a verification link!")
+      setMessage("Registration failed: Could not get user ID.")
     }
   }
 
@@ -35,6 +53,13 @@ export default function Register() {
         placeholder="Password"
         value={password}
         onChange={e => setPassword(e.target.value)}
+        required
+      />
+      <input
+        type="text"
+        placeholder="Full Name"
+        value={fullName}
+        onChange={e => setFullName(e.target.value)}
         required
       />
       <button type="submit">Register</button>
