@@ -1,52 +1,87 @@
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import supabase from '../src/supabaseClient'; // ✅ ensure this is a default export now
+// pages/login.js
+import { useState, useEffect } from "react";
+import { supabase } from "../src/supabaseClient";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [error, setError] = useState("");
 
-  // Dropdown data
-  const [counties, setCounties] = useState([]);
-  const [subcounties, setSubcounties] = useState([]);
-  const [wards, setWards] = useState([]);
-  const [pollingCentres, setPollingCentres] = useState([]);
-
-  const [profile, setProfile] = useState({
-    mobile: '',
-    county: '',
-    subcounty: '',
-    ward: '',
-    polling_centre: ''
-  });
-
-  const router = useRouter();
-
-  // ✅ Handle login
+  // Handle login
   const handleLogin = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMsg('');
-    const { error } = await supabase.auth.signInWithPassword({
+    setError("");
+
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
     if (error) {
-      setMsg('Error: ' + error.message);
+      setError(error.message);
     } else {
-      setMsg('');
+      setUser(data.user);
     }
-    setLoading(false);
   };
 
-  // ✅ After login, check profiles table
+  // Fetch profile once user is logged in
   useEffect(() => {
-    const checkProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+    const fetchProfile = async () => {
       if (!user) return;
 
-      const { data: profileRow } = await supabase
-        .from('profiles')
+      const { data: profileRow, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.error(error);
+        setError("Failed to load profile");
+      } else {
+        setProfile(profileRow);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  return (
+    <div style={{ maxWidth: "400px", margin: "auto" }}>
+      <h2>Login</h2>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      {!user ? (
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <br />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <br />
+          <button type="submit">Login</button>
+        </form>
+      ) : (
+        <div>
+          <h3>Welcome back!</h3>
+          {profile ? (
+            <pre>{JSON.stringify(profile, null, 2)}</pre>
+          ) : (
+            <p>Loading profile...</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
