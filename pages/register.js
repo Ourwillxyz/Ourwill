@@ -1,49 +1,49 @@
-import { useState } from "react"
-import { createClient } from "@supabase/supabase-js"
+// register.js
 
-// Uses your .env.local values
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+import { createClient } from '@supabase/supabase-js'
 
-export default function Register() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [message, setMessage] = useState("")
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-  const handleRegister = async (e) => {
-    e.preventDefault()
-
-    // Register using only Supabase Auth
-    const { error } = await supabase.auth.signUp({ email, password })
-
-    if (error) {
-      setMessage(`Error: ${error.message}`)
-      console.error(error)
-      return
+/**
+ * Register a new user with email & password
+ * @param {string} email 
+ * @param {string} password 
+ * @returns {Promise<{user: object|null, error: object|null}>}
+ */
+export async function registerUser(email, password) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: 'http://localhost:3000/welcome' // Change to your app URL
     }
-    setMessage("Registration successful! Check your email for a verification link.")
+  })
+
+  if (error) {
+    console.error('Registration error:', error.message)
+    return { user: null, error }
   }
 
-  return (
-    <form onSubmit={handleRegister}>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        required
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        required
-      />
-      <button type="submit">Register</button>
-      <p>{message}</p>
-    </form>
-  )
+  return { user: data.user, error: null }
+}
+
+// Example usage (you can remove this in production)
+async function testRegistration() {
+  const email = 'newuser@example.com'
+  const password = 'StrongPassword123'
+  const { user, error } = await registerUser(email, password)
+
+  if (error) {
+    console.log('❌ Error:', error.message)
+  } else {
+    console.log('✅ User registered:', user)
+  }
+}
+
+// Run test only if script is executed directly
+if (require.main === module) {
+  testRegistration()
 }
