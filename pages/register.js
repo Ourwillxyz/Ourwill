@@ -14,28 +14,35 @@ export default function Register() {
 
   const handleRegister = async (e) => {
     e.preventDefault()
-    // Create user in Auth
-    const { data, error } = await supabase.auth.signUp({ email, password })
+
+    // Step 1: Register user via Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName } // This will be stored in user_metadata!
+      }
+    })
+
     if (error) {
       setMessage(error.message)
       return
     }
-    // Get the user ID (UID)
+
+    // Step 2: Optionally insert into profiles table
+    // Only if you want a custom user profile table!
     const userId = data?.user?.id
     if (userId) {
-      // Insert into profiles table (add other fields as needed)
       const { error: profileError } = await supabase
         .from("profiles")
-        .insert([
-          { id: userId, email, full_name: fullName } // adjust column names for your schema
-        ])
+        .insert([{ id: userId, email, full_name: fullName }])
       if (profileError) {
         setMessage("Registered, but error saving profile: " + profileError.message)
       } else {
         setMessage("Registered! Check your email for a verification link.")
       }
     } else {
-      setMessage("Registration failed: Could not get user ID.")
+      setMessage("Registration succeeded, no user id returned. Check Auth settings.")
     }
   }
 
