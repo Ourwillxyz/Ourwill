@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { createClient } from "@supabase/supabase-js"
 
+// Uses your existing .env.local variables! No need to change anything.
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -15,35 +16,22 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault()
 
-    // Step 1: Register user via Supabase Auth
+    // Register user with Supabase Auth only!
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName } // This will be stored in user_metadata!
+        data: { full_name: fullName } // User metadata (optional)
       }
     })
 
     if (error) {
-      setMessage(error.message)
+      setMessage(`Error: ${error.message}`)
+      console.error(error)
       return
     }
 
-    // Step 2: Optionally insert into profiles table
-    // Only if you want a custom user profile table!
-    const userId = data?.user?.id
-    if (userId) {
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert([{ id: userId, email, full_name: fullName }])
-      if (profileError) {
-        setMessage("Registered, but error saving profile: " + profileError.message)
-      } else {
-        setMessage("Registered! Check your email for a verification link.")
-      }
-    } else {
-      setMessage("Registration succeeded, no user id returned. Check Auth settings.")
-    }
+    setMessage("Registration successful! Check your email for a verification link.")
   }
 
   return (
@@ -67,7 +55,6 @@ export default function Register() {
         placeholder="Full Name"
         value={fullName}
         onChange={e => setFullName(e.target.value)}
-        required
       />
       <button type="submit">Register</button>
       <p>{message}</p>
