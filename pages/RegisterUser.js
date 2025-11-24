@@ -17,7 +17,7 @@ export default function RegisterUser() {
   const [successMsg, setSuccessMsg] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
 
-  // Dropdown options state
+  // Dropdown options state (now arrays of strings)
   const [counties, setCounties] = useState([]);
   const [subcounties, setSubcounties] = useState([]);
   const [wards, setWards] = useState([]);
@@ -37,15 +37,29 @@ export default function RegisterUser() {
   // Fetch counties on mount
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from('counties')
-        .select('county_name')
-        .order('county_name', { ascending: true });
-      if (error) {
-        setErrorMsg('Error fetching counties: ' + error.message);
-      }
-      if (data) {
-        setCounties(data);
+      try {
+        const { data, error } = await supabase
+          .from('counties')
+          .select('county_name')
+          .order('county_name', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching counties:', error);
+          setErrorMsg('Error fetching counties: ' + error.message);
+          setCounties([]);
+          return;
+        }
+
+        if (data) {
+          // Normalize to array of strings
+          const names = data.map(d => d.county_name).filter(Boolean);
+          console.log('Fetched counties:', names);
+          setCounties(names);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching counties:', err);
+        setErrorMsg('Unexpected error fetching counties.');
+        setCounties([]);
       }
     })();
   }, []);
@@ -57,12 +71,27 @@ export default function RegisterUser() {
       return;
     }
     (async () => {
-      const { data, error } = await supabase
-        .from('subcounties')
-        .select('subcounty_name')
-        .eq('county_name', form.county)
-        .order('subcounty_name', { ascending: true });
-      if (!error && data) setSubcounties(data);
+      try {
+        const { data, error } = await supabase
+          .from('subcounties')
+          .select('subcounty_name')
+          .eq('county_name', form.county)
+          .order('subcounty_name', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching subcounties:', error);
+          setSubcounties([]);
+          return;
+        }
+        if (data) {
+          const names = data.map(d => d.subcounty_name).filter(Boolean);
+          console.log(`Fetched subcounties for ${form.county}:`, names);
+          setSubcounties(names);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching subcounties:', err);
+        setSubcounties([]);
+      }
     })();
   }, [form.county]);
 
@@ -73,12 +102,27 @@ export default function RegisterUser() {
       return;
     }
     (async () => {
-      const { data, error } = await supabase
-        .from('wards')
-        .select('ward_name')
-        .eq('subcounty_name', form.subcounty)
-        .order('ward_name', { ascending: true });
-      if (!error && data) setWards(data);
+      try {
+        const { data, error } = await supabase
+          .from('wards')
+          .select('ward_name')
+          .eq('subcounty_name', form.subcounty)
+          .order('ward_name', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching wards:', error);
+          setWards([]);
+          return;
+        }
+        if (data) {
+          const names = data.map(d => d.ward_name).filter(Boolean);
+          console.log(`Fetched wards for ${form.subcounty}:`, names);
+          setWards(names);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching wards:', err);
+        setWards([]);
+      }
     })();
   }, [form.subcounty]);
 
@@ -89,12 +133,27 @@ export default function RegisterUser() {
       return;
     }
     (async () => {
-      const { data, error } = await supabase
-        .from('polling_centres')
-        .select('polling_centre_name')
-        .eq('ward_name', form.ward)
-        .order('polling_centre_name', { ascending: true });
-      if (!error && data) setPollingCentres(data);
+      try {
+        const { data, error } = await supabase
+          .from('polling_centres')
+          .select('polling_centre_name')
+          .eq('ward_name', form.ward)
+          .order('polling_centre_name', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching polling centres:', error);
+          setPollingCentres([]);
+          return;
+        }
+        if (data) {
+          const names = data.map(d => d.polling_centre_name).filter(Boolean);
+          console.log(`Fetched polling centres for ${form.ward}:`, names);
+          setPollingCentres(names);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching polling centres:', err);
+        setPollingCentres([]);
+      }
     })();
   }, [form.ward]);
 
@@ -177,14 +236,12 @@ export default function RegisterUser() {
           password: form.password,
         });
 
-        // Check for sign up error
         if (signUpError) {
           setErrorMsg(signUpError.message);
           setLoading(false);
           return;
         }
 
-        // Defensive: Only proceed if user object exists
         const userId = signUpData?.user?.id;
         if (!userId) {
           setErrorMsg('Registration failed: No user object returned. Please try again or contact support.');
@@ -192,7 +249,6 @@ export default function RegisterUser() {
           return;
         }
 
-        // Insert user profile info to profiles table
         const { error: profileError } = await supabase
           .from('profiles')
           .insert([{
@@ -226,6 +282,7 @@ export default function RegisterUser() {
         setSuccessMsg('Login successful!');
       }
     } catch (err) {
+      console.error('Unexpected error during submit:', err);
       setErrorMsg('An unexpected error occurred.');
     }
     setLoading(false);
@@ -344,7 +401,7 @@ export default function RegisterUser() {
               >
                 <option value="">Select County</option>
                 {counties.map(c => (
-                  <option key={c.county_name} value={c.county_name}>{c.county_name}</option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
               {/* Subcounty Dropdown */}
@@ -358,7 +415,7 @@ export default function RegisterUser() {
               >
                 <option value="">Select Subcounty</option>
                 {subcounties.map(sc => (
-                  <option key={sc.subcounty_name} value={sc.subcounty_name}>{sc.subcounty_name}</option>
+                  <option key={sc} value={sc}>{sc}</option>
                 ))}
               </select>
               {/* Ward Dropdown */}
@@ -372,7 +429,7 @@ export default function RegisterUser() {
               >
                 <option value="">Select Ward</option>
                 {wards.map(w => (
-                  <option key={w.ward_name} value={w.ward_name}>{w.ward_name}</option>
+                  <option key={w} value={w}>{w}</option>
                 ))}
               </select>
               {/* Polling Centre Dropdown */}
@@ -386,7 +443,7 @@ export default function RegisterUser() {
               >
                 <option value="">Select Polling Centre</option>
                 {pollingCentres.map(pc => (
-                  <option key={pc.polling_centre_name} value={pc.polling_centre_name}>{pc.polling_centre_name}</option>
+                  <option key={pc} value={pc}>{pc}</option>
                 ))}
               </select>
               {/* Password input for registration */}
